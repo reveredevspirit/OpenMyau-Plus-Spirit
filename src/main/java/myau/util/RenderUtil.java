@@ -87,7 +87,8 @@ public class RenderUtil {
 
     public static void renderEnchantmentText(ItemStack itemStack, float x, float y, float scale) {
         NBTTagList nBTTagList;
-        nBTTagList = itemStack.getItem() == Items.enchanted_book ? Items.enchanted_book.getEnchantments(itemStack) : itemStack.getEnchantmentTagList();
+        nBTTagList = itemStack.getItem() == Items.enchanted_book ? Items.enchanted_book.getEnchantments(itemStack)
+                : itemStack.getEnchantmentTagList();
         if (nBTTagList != null) {
             for (int i = 0; i < nBTTagList.tagCount(); ++i) {
                 EnchantmentData enchantmentData = enchantmentMap.get(nBTTagList.getCompoundTagAt(i).getInteger("id"));
@@ -96,7 +97,10 @@ public class RenderUtil {
                 }
                 short s = nBTTagList.getCompoundTagAt(i).getShort("lvl");
                 ChatColors chatColors = RenderUtil.getColorForLevel(s, enchantmentData.maxLevel);
-                RenderUtil.drawOutlinedString(ChatColors.formatColor(String.format("&r%s%s%d&r", enchantmentData.shortName, chatColors, (int) s)), x * (1.0f / scale), (y + (float) i * 4.0f) * (1.0f / scale));
+                RenderUtil.drawOutlinedString(
+                        ChatColors.formatColor(
+                                String.format("&r%s%s%d&r", enchantmentData.shortName, chatColors, (int) s)),
+                        x * (1.0f / scale), (y + (float) i * 4.0f) * (1.0f / scale));
             }
         }
     }
@@ -178,7 +182,8 @@ public class RenderUtil {
         GlStateManager.resetColor();
     }
 
-    public static void drawOutlineRect(float x1, float y1, float x2, float y2, float lineWidth, int backgroundColor, int lineColor) {
+    public static void drawOutlineRect(float x1, float y1, float x2, float y2, float lineWidth, int backgroundColor,
+                                       int lineColor) {
         RenderUtil.drawRect(0.0f, 0.0f, x2, 27.0f, backgroundColor);
         if (lineColor == 0) {
             return;
@@ -216,19 +221,23 @@ public class RenderUtil {
         GlStateManager.resetColor();
     }
 
-    public static void drawLine3D(Vec3 start, double endX, double endY, double endZ, float red, float green, float blue, float alpha, float lineWidth) {
+    public static void drawLine3D(Vec3 start, double endX, double endY, double endZ, float red, float green, float blue,
+                                  float alpha, float lineWidth) {
         GlStateManager.pushMatrix();
         GlStateManager.color(red, green, blue, alpha);
         boolean bl = RenderUtil.mc.gameSettings.viewBobbing;
         RenderUtil.mc.gameSettings.viewBobbing = false;
-        ((IAccessorEntityRenderer) RenderUtil.mc.entityRenderer).callSetupCameraTransform(((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks, 2);
+        ((IAccessorEntityRenderer) RenderUtil.mc.entityRenderer)
+                .callSetupCameraTransform(((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks, 2);
         RenderUtil.mc.gameSettings.viewBobbing = bl;
         GL11.glLineWidth(lineWidth);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
         GL11.glBegin(GL11.GL_LINES);
         GL11.glVertex3d(start.xCoord, start.yCoord, start.zCoord);
-        GL11.glVertex3d(endX - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), endY - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), endZ - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
+        GL11.glVertex3d(endX - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(),
+                endY - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
+                endZ - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
         GL11.glEnd();
         GL11.glDisable(GL11.GL_LINE_SMOOTH);
         GL11.glLineWidth(2.0f);
@@ -309,7 +318,51 @@ public class RenderUtil {
         GlStateManager.resetColor();
     }
 
-    public static void drawCircle(double centerX, double centerY, double centerZ, double radius, int segments, int color) {
+    public static void drawRoundedRect(int x, int y, int width, int height, int radius, int color) {
+        drawRect(x + radius, y, x + width - radius, y + height, color);
+        drawRect(x, y + radius, x + radius, y + height - radius, color);
+        drawRect(x + width - radius, y + radius, x + width, y + height - radius, color);
+
+        // Corners
+        drawCircle(x + radius, y + radius, radius, color);
+        drawCircle(x + width - radius, y + radius, radius, color);
+        drawCircle(x + radius, y + height - radius, radius, color);
+        drawCircle(x + width - radius, y + height - radius, radius, color);
+    }
+
+    public static void drawCircle(int centerX, int centerY, int radius, int color) {
+        float alpha = (float) (color >> 24 & 0xFF) / 255.0f;
+        float red = (float) (color >> 16 & 0xFF) / 255.0f;
+        float green = (float) (color >> 8 & 0xFF) / 255.0f;
+        float blue = (float) (color & 0xFF) / 255.0f;
+
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+        GlStateManager.color(red, green, blue, alpha);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer worldRenderer = tessellator.getWorldRenderer();
+
+        worldRenderer.begin(GL11.GL_TRIANGLE_FAN, DefaultVertexFormats.POSITION);
+        worldRenderer.pos(centerX, centerY, 0).endVertex();
+
+        int segments = 32;
+        for (int i = 0; i <= segments; i++) {
+            double angle = 2 * Math.PI * i / segments;
+            double x = centerX + Math.cos(angle) * radius;
+            double y = centerY + Math.sin(angle) * radius;
+            worldRenderer.pos(x, y, 0).endVertex();
+        }
+
+        tessellator.draw();
+
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+    }
+
+    public static void drawCircle(double centerX, double centerY, double centerZ, double radius, int segments,
+                                  int color) {
         RenderUtil.setColor(color);
         GL11.glLineWidth(3.0f);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
@@ -326,9 +379,15 @@ public class RenderUtil {
     }
 
     public static void drawEntityCircle(Entity entity, double radius, int segments, int color) {
-        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX();
-        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY();
-        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ();
+        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX();
+        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY() + entity.getEyeHeight();
+        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ();
         RenderUtil.drawCircle(d2, d3, d4, radius, segments, color);
     }
 
@@ -336,34 +395,59 @@ public class RenderUtil {
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldRenderer = tessellator.getWorldRenderer();
         worldRenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
-        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63).endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
+        worldRenderer.pos(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ).color(red, green, blue, 63)
+                .endVertex();
         tessellator.draw();
     }
 
-    public static void drawBoundingBox(AxisAlignedBB axisAlignedBB, int red, int green, int blue, int alpha, float lineWidth) {
+    public static void drawBoundingBox(AxisAlignedBB axisAlignedBB, int red, int green, int blue, int alpha,
+                                       float lineWidth) {
         GL11.glLineWidth(lineWidth);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
@@ -373,31 +457,91 @@ public class RenderUtil {
     }
 
     public static void drawEntityBox(Entity entity, int red, int green, int blue) {
-        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        RenderUtil.drawFilledBox(entity.getEntityBoundingBox().expand(0.1f, 0.1f, 0.1f).offset(d2 - entity.posX, d3 - entity.posY, d4 - entity.posZ).offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), red, green, blue);
+        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        RenderUtil.drawFilledBox(entity.getEntityBoundingBox().expand(0.1f, 0.1f, 0.1f)
+                        .offset(d2 - entity.posX, d3 - entity.posY, d4 - entity.posZ)
+                        .offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                red, green, blue);
     }
 
-    public static void drawEntityBoundingBox(Entity entity, int red, int green, int blue, int alpha, float lineWidth, double expand) {
-        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-        RenderUtil.drawBoundingBox(entity.getEntityBoundingBox().expand(expand, expand, expand).offset(d2 - entity.posX, d3 - entity.posY, d4 - entity.posZ).offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), red, green, blue, alpha, lineWidth);
+    public static void drawEntityDot(Entity entity, int red, int green, int blue) {
+        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX();
+        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY() + entity.getEyeHeight();
+        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ();
+
+        GL11.glPushMatrix();
+        GL11.glTranslated(d2, d3, d4);
+        GL11.glPointSize(10.0f);
+        GL11.glEnable(GL11.GL_POINT_SMOOTH);
+        GL11.glHint(GL11.GL_POINT_SMOOTH_HINT, GL11.GL_NICEST);
+        GL11.glBegin(GL11.GL_POINTS);
+        GL11.glColor4f(red / 255.0f, green / 255.0f, blue / 255.0f, 1.0f);
+        GL11.glVertex3d(0, 0, 0);
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_POINT_SMOOTH);
+        GL11.glPopMatrix();
+    }
+
+    public static void drawEntityBoundingBox(Entity entity, int red, int green, int blue, int alpha, float lineWidth,
+                                             double expand) {
+        double d2 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        double d3 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        double d4 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+        RenderUtil.drawBoundingBox(
+                entity.getEntityBoundingBox().expand(expand, expand, expand)
+                        .offset(d2 - entity.posX, d3 - entity.posY, d4 - entity.posZ)
+                        .offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                red, green, blue, alpha, lineWidth);
     }
 
     public static void drawBlockBox(BlockPos blockPos, double height, int red, int green, int blue) {
-        RenderUtil.drawFilledBox(new AxisAlignedBB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), (double) blockPos.getX() + 1.0, (double) blockPos.getY() + height, (double) blockPos.getZ() + 1.0).offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), red, green, blue);
+        RenderUtil.drawFilledBox(new AxisAlignedBB(blockPos.getX(), blockPos.getY(), blockPos.getZ(),
+                        (double) blockPos.getX() + 1.0, (double) blockPos.getY() + height, (double) blockPos.getZ() + 1.0)
+                        .offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                red, green, blue);
     }
 
-    public static void drawBlockBoundingBox(BlockPos blockPos, double height, int red, int green, int blue, int alpha, float lineWidth) {
-        RenderUtil.drawBoundingBox(new AxisAlignedBB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), (double) blockPos.getX() + 1.0, (double) blockPos.getY() + height, (double) blockPos.getZ() + 1.0).offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(), -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), red, green, blue, alpha, lineWidth);
+    public static void drawBlockBoundingBox(BlockPos blockPos, double height, int red, int green, int blue, int alpha,
+                                            float lineWidth) {
+        RenderUtil.drawBoundingBox(
+                new AxisAlignedBB(blockPos.getX(), blockPos.getY(), blockPos.getZ(), (double) blockPos.getX() + 1.0,
+                        (double) blockPos.getY() + height, (double) blockPos.getZ() + 1.0)
+                        .offset(-((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY(),
+                                -((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                red, green, blue, alpha, lineWidth);
     }
 
     public static void drawCornerESP(EntityPlayer entity, float red, float green, float blue) {
-        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
-        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
-        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
+        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
+        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
+        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
         GlStateManager.pushMatrix();
         GlStateManager.translate(x, y + entity.height / 2.0F, z);
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
@@ -427,9 +571,15 @@ public class RenderUtil {
     }
 
     public static void drawFake2DESP(EntityPlayer entity, float red, float green, float blue) {
-        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
-        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
-        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) mc).getTimer().renderPartialTicks) - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
+        float x = (float) (RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX());
+        float y = (float) (RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY());
+        float z = (float) (RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                ((IAccessorMinecraft) mc).getTimer().renderPartialTicks)
+                - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ());
         GlStateManager.pushMatrix();
         GlStateManager.translate(x, y + entity.height / 2.0F, z);
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
@@ -457,19 +607,38 @@ public class RenderUtil {
     public static Vector4d projectToScreen(Entity entity, double screenScale) {
         Vector4d vector4d;
         {
-            double d3 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-            double d4 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-            double d5 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ, ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
-            AxisAlignedBB axisAlignedBB = entity.getEntityBoundingBox().expand(0.1f, 0.1f, 0.1f).offset(d3 - entity.posX, d4 - entity.posY, d5 - entity.posZ);
+            double d3 = RenderUtil.lerpDouble(entity.posX, entity.lastTickPosX,
+                    ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+            double d4 = RenderUtil.lerpDouble(entity.posY, entity.lastTickPosY,
+                    ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+            double d5 = RenderUtil.lerpDouble(entity.posZ, entity.lastTickPosZ,
+                    ((IAccessorMinecraft) RenderUtil.mc).getTimer().renderPartialTicks);
+            AxisAlignedBB axisAlignedBB = entity.getEntityBoundingBox().expand(0.1f, 0.1f, 0.1f)
+                    .offset(d3 - entity.posX, d4 - entity.posY, d5 - entity.posZ);
             vector4d = null;
-            for (Vector3d vector3d : new Vector3d[]{new Vector3d(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ), new Vector3d(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ), new Vector3d(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ), new Vector3d(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ), new Vector3d(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ), new Vector3d(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ), new Vector3d(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ), new Vector3d(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ)}) {
+            for (Vector3d vector3d : new Vector3d[] {
+                    new Vector3d(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.minZ),
+                    new Vector3d(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.minZ),
+                    new Vector3d(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.minZ),
+                    new Vector3d(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.minZ),
+                    new Vector3d(axisAlignedBB.minX, axisAlignedBB.minY, axisAlignedBB.maxZ),
+                    new Vector3d(axisAlignedBB.minX, axisAlignedBB.maxY, axisAlignedBB.maxZ),
+                    new Vector3d(axisAlignedBB.maxX, axisAlignedBB.minY, axisAlignedBB.maxZ),
+                    new Vector3d(axisAlignedBB.maxX, axisAlignedBB.maxY, axisAlignedBB.maxZ) }) {
                 GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelViewBuffer);
                 GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projectionBuffer);
                 GL11.glGetInteger(GL11.GL_VIEWPORT, viewportBuffer);
-                if (!GLU.gluProject((float) (vector3d.x - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX()), (float) (vector3d.y - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY()), (float) (vector3d.z - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()), modelViewBuffer, projectionBuffer, viewportBuffer, vectorBuffer))
+                if (!GLU.gluProject(
+                        (float) (vector3d.x - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosX()),
+                        (float) (vector3d.y - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosY()),
+                        (float) (vector3d.z - ((IAccessorRenderManager) mc.getRenderManager()).getRenderPosZ()),
+                        modelViewBuffer, projectionBuffer, viewportBuffer, vectorBuffer))
                     continue;
-                vector3d = new Vector3d((double) vectorBuffer.get(0) / screenScale, (double) ((float) Display.getHeight() - vectorBuffer.get(1)) / screenScale, vectorBuffer.get(2));
-                if (!(vector3d.z >= 0.0) || !(vector3d.z < 1.0)) continue;
+                vector3d = new Vector3d((double) vectorBuffer.get(0) / screenScale,
+                        (double) ((float) Display.getHeight() - vectorBuffer.get(1)) / screenScale,
+                        vectorBuffer.get(2));
+                if (!(vector3d.z >= 0.0) || !(vector3d.z < 1.0))
+                    continue;
                 if (vector4d == null) {
                     vector4d = new Vector4d(vector3d.x, vector3d.y, vector3d.z, 0.0);
                 }
@@ -483,7 +652,8 @@ public class RenderUtil {
     }
 
     public static boolean isInViewFrustum(AxisAlignedBB axisAlignedBB, double expand) {
-        cameraFrustum.setPosition(RenderUtil.mc.getRenderViewEntity().posX, RenderUtil.mc.getRenderViewEntity().posY, RenderUtil.mc.getRenderViewEntity().posZ);
+        cameraFrustum.setPosition(RenderUtil.mc.getRenderViewEntity().posX, RenderUtil.mc.getRenderViewEntity().posY,
+                RenderUtil.mc.getRenderViewEntity().posZ);
         return cameraFrustum.isBoundingBoxInFrustum(axisAlignedBB.expand(expand, expand, expand));
     }
 

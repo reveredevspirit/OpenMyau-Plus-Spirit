@@ -16,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
+import myau.ui.overlay.dynamicisland.DynamicIsland;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
@@ -43,6 +44,7 @@ public class HUD extends Module {
     public final IntProperty offsetY = new IntProperty("offset-y", 2, 0, 255);
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
     public final PercentProperty background = new PercentProperty("background", 25);
+    public final BooleanProperty dynamicIsland = new BooleanProperty("dynamic-island", true);
     public final BooleanProperty showBar = new BooleanProperty("bar", true);
     public final BooleanProperty shadow = new BooleanProperty("shadow", true);
     public final BooleanProperty suffixes = new BooleanProperty("suffixes", true);
@@ -182,11 +184,6 @@ public class HUD extends Module {
             GlStateManager.pushMatrix();
             GlStateManager.scale(this.scale.getValue(), this.scale.getValue(), 0.0F);
 
-            // Render dynamic island overlay inside HUD scale so it lines up with module list
-            try {
-                myau.ui.overlay.dynamicisland.DynamicIsland.render(event, this.scale.getValue());
-            } catch (Throwable ignored) {
-            }
 
             long l = System.currentTimeMillis();
             long offset = 0L;
@@ -295,6 +292,13 @@ public class HUD extends Module {
             }
             GlStateManager.enableDepth();
             GlStateManager.popMatrix();
+
+            if (this.dynamicIsland.getValue()) {
+                try {
+                    myau.ui.overlay.dynamicisland.DynamicIsland.render(event, this.scale.getValue());
+                } catch (Throwable ignored) {
+                }
+            }
         }
 
 
