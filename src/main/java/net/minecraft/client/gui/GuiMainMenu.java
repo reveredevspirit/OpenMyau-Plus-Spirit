@@ -1,31 +1,48 @@
 package net.minecraft.client.gui;
 
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import myau.font.FontProcess;
+import myau.util.shader.impl.MainMenu;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.realms.RealmsBridge;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.demo.DemoWorldServer;
 import net.minecraft.world.storage.ISaveFormat;
 import net.minecraft.world.storage.WorldInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GLContext;
+import org.lwjgl.util.glu.Project;
 
 public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
 {
+    private static final AtomicInteger field_175373_f = new AtomicInteger(0);
     private static final Logger logger = LogManager.getLogger();
     private static final Random RANDOM = new Random();
     private float updateCounter;
-    private GuiButton buttonResetDemo;
+    private myau.util.shader.impl.GuiButton buttonResetDemo;
     private int panoramaTimer;
     private DynamicTexture viewportTexture;
     private boolean field_175375_v = true;
@@ -41,10 +58,10 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
     private int field_92020_v;
     private int field_92019_w;
     private ResourceLocation backgroundTexture;
-    private GuiButton altsButton;
+    private myau.util.shader.impl.GuiButton altsButton;
     private boolean field_183502_L;
     private GuiScreen field_183503_M;
-    private GuiButton modButton;
+    private myau.util.shader.impl.GuiButton modButton;
     private GuiScreen modUpdateNotification;
     private long initTime = System.currentTimeMillis();
 
@@ -97,9 +114,8 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
             this.addSingleplayerMultiplayerButtons(j, 24);
         }
 
-        this.buttonList.add(new GuiButton(0, this.width / 2 - 100, j + 72 + 12, 98, 20, I18n.format("menu.options")));
-        this.buttonList.add(new GuiButton(4, this.width / 2 + 2, j + 72 + 12, 98, 20, I18n.format("menu.quit")));
-        this.buttonList.add(new GuiButtonLanguage(5, this.width / 2 - 124, j + 72 + 12));
+        this.buttonList.add(new myau.util.shader.impl.GuiButton(0, this.width / 2 - 100, j + 72 + 12, 98, 20, I18n.format("menu.options", new Object[0])));
+        this.buttonList.add(new myau.util.shader.impl.GuiButton(4, this.width / 2 + 2, j + 72 + 12, 98, 20, I18n.format("menu.quit", new Object[0])));
 
         synchronized (this.threadLock)
         {
@@ -107,7 +123,7 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
             this.field_92024_r = this.fontRendererObj.getStringWidth(this.openGLWarning2);
             int k = Math.max(this.field_92023_s, this.field_92024_r);
             this.field_92022_t = (this.width - k) / 2;
-            this.field_92021_u = this.buttonList.get(0).yPosition - 24;
+            this.field_92021_u = ((myau.util.shader.impl.GuiButton)this.buttonList.get(0)).yPosition - 24;
             this.field_92020_v = this.field_92022_t + k;
             this.field_92019_w = this.field_92021_u + 24;
         }
@@ -130,17 +146,17 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
 
     private void addSingleplayerMultiplayerButtons(int p_73969_1_, int p_73969_2_)
     {
-        this.buttonList.add(new GuiButton(1, this.width / 2 - 100, p_73969_1_, I18n.format("menu.singleplayer")));
-        this.buttonList.add(new GuiButton(2, this.width / 2 - 100, p_73969_1_ + p_73969_2_, I18n.format("menu.multiplayer")));
+        this.buttonList.add(new myau.util.shader.impl.GuiButton(1, this.width / 2 - 100, p_73969_1_, I18n.format("menu.singleplayer", new Object[0])));
+        this.buttonList.add(new myau.util.shader.impl.GuiButton(2, this.width / 2 - 100, p_73969_1_ + p_73969_2_ * 1, I18n.format("menu.multiplayer", new Object[0])));
 
-        // REMOVED: Reflector dependency not available
-        this.buttonList.add(this.altsButton = new GuiButton(14, this.width / 2 - 100, p_73969_1_ + p_73969_2_ * 2, "Alt Manager"));
+        this.buttonList.add(this.altsButton = new myau.util.shader.impl.GuiButton(14, this.width / 2 + 2, p_73969_1_ + p_73969_2_ * 2, 98, 20, "Alt Manager"));
+        this.buttonList.add(this.modButton = new myau.util.shader.impl.GuiButton(6, this.width / 2 - 100, p_73969_1_ + p_73969_2_ * 2, 98, 20, I18n.format("fml.menu.mods", new Object[0])));
     }
 
     private void addDemoButtons(int p_73972_1_, int p_73972_2_)
     {
-        this.buttonList.add(new GuiButton(11, this.width / 2 - 100, p_73972_1_, I18n.format("menu.playdemo")));
-        this.buttonList.add(this.buttonResetDemo = new GuiButton(12, this.width / 2 - 100, p_73972_1_ + p_73972_2_, I18n.format("menu.resetdemo")));
+        this.buttonList.add(new myau.util.shader.impl.GuiButton(11, this.width / 2 - 100, p_73972_1_, I18n.format("menu.playdemo", new Object[0])));
+        this.buttonList.add(this.buttonResetDemo = new myau.util.shader.impl.GuiButton(12, this.width / 2 - 100, p_73972_1_ + p_73972_2_ * 1, I18n.format("menu.resetdemo", new Object[0])));
         ISaveFormat isaveformat = this.mc.getSaveLoader();
         WorldInfo worldinfo = isaveformat.getWorldInfo("Demo_World");
 
@@ -150,7 +166,7 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         }
     }
 
-    protected void actionPerformed(GuiButton button) throws IOException
+    protected void actionPerformed(myau.util.shader.impl.GuiButton button) throws IOException
     {
         if (button.id == 0)
         {
@@ -172,20 +188,9 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
             this.mc.displayGuiScreen(new GuiMultiplayer(this));
         }
 
-        if (button.id == 14 && this.altsButton.visible)
-        {
-            // REMOVED: wtf.fentanyl dependency not available
-            // this.mc.displayGuiScreen(new wtf.fentanyl.gui.alt.AltManagerGui());
-        }
-
         if (button.id == 4)
         {
             this.mc.shutdown();
-        }
-
-        if (button.id == 6)
-        {
-            // Placeholder for mod list gui
         }
 
         if (button.id == 11)
@@ -228,12 +233,12 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
                 try
                 {
                     Class<?> oclass = Class.forName("java.awt.Desktop");
-                    Object object = oclass.getMethod("getDesktop").invoke(null);
-                    oclass.getMethod("browse", URI.class).invoke(object, new URI(this.openGLWarningLink));
+                    Object object = oclass.getMethod("getDesktop", new Class[0]).invoke((Object)null, new Object[0]);
+                    oclass.getMethod("browse", new Class[] {URI.class}).invoke(object, new Object[] {new URI(this.openGLWarningLink)});
                 }
                 catch (Throwable throwable)
                 {
-                    logger.error("Couldn't open link", throwable);
+                    logger.error("Couldn\'t open link", throwable);
                 }
             }
 
@@ -243,8 +248,6 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
 
     private void drawPanorama(int p_73970_1_, int p_73970_2_, float p_73970_3_)
     {
-        // REMOVED: CustomPanorama dependency not available
-        /*
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         GlStateManager.matrixMode(5889);
@@ -265,7 +268,69 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         int i = 8;
         int j = 64;
 
-        // ... Panorama drawing logic would go here ...
+        for (int k = 0; k < j; ++k)
+        {
+            GlStateManager.pushMatrix();
+            float f = ((float)(k % i) / (float)i - 0.5F) / 64.0F;
+            float f1 = ((float)(k / i) / (float)i - 0.5F) / 64.0F;
+            float f2 = 0.0F;
+            GlStateManager.translate(f, f1, f2);
+            GlStateManager.rotate(MathHelper.sin(((float)this.panoramaTimer + p_73970_3_) / 400.0F) * 25.0F + 20.0F, 1.0F, 0.0F, 0.0F);
+            GlStateManager.rotate(-((float)this.panoramaTimer + p_73970_3_) * 0.1F, 0.0F, 1.0F, 0.0F);
+
+            for (int l = 0; l < 6; ++l)
+            {
+                GlStateManager.pushMatrix();
+
+                if (l == 1)
+                {
+                    GlStateManager.rotate(90.0F, 0.0F, 1.0F, 0.0F);
+                }
+
+                if (l == 2)
+                {
+                    GlStateManager.rotate(180.0F, 0.0F, 1.0F, 0.0F);
+                }
+
+                if (l == 3)
+                {
+                    GlStateManager.rotate(-90.0F, 0.0F, 1.0F, 0.0F);
+                }
+
+                if (l == 4)
+                {
+                    GlStateManager.rotate(90.0F, 1.0F, 0.0F, 0.0F);
+                }
+
+                if (l == 5)
+                {
+                    GlStateManager.rotate(-90.0F, 1.0F, 0.0F, 0.0F);
+                }
+
+                ResourceLocation[] aresourcelocation = null;
+
+                {
+                }
+
+                if (aresourcelocation != null)
+                {
+                    this.mc.getTextureManager().bindTexture(aresourcelocation[l]);
+                    worldrenderer.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR);
+                    int i1 = 255 / (k + 1);
+                    float f3 = 0.0F;
+                    worldrenderer.pos(-1.0D, -1.0D, 1.0D).tex(0.0D, 0.0D).color(255, 255, 255, i1).endVertex();
+                    worldrenderer.pos(1.0D, -1.0D, 1.0D).tex(1.0D, 0.0D).color(255, 255, 255, i1).endVertex();
+                    worldrenderer.pos(1.0D, 1.0D, 1.0D).tex(1.0D, 1.0D).color(255, 255, 255, i1).endVertex();
+                    worldrenderer.pos(-1.0D, 1.0D, 1.0D).tex(0.0D, 1.0D).color(255, 255, 255, i1).endVertex();
+                    tessellator.draw();
+                }
+
+                GlStateManager.popMatrix();
+            }
+
+            GlStateManager.popMatrix();
+            GlStateManager.colorMask(true, true, true, false);
+        }
 
         worldrenderer.setTranslation(0.0D, 0.0D, 0.0D);
         GlStateManager.colorMask(true, true, true, true);
@@ -276,13 +341,10 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         GlStateManager.depthMask(true);
         GlStateManager.enableCull();
         GlStateManager.enableDepth();
-        */
     }
 
     private void rotateAndBlurSkybox(float p_73968_1_)
     {
-        // REMOVED: backgroundTexture field is never assigned, CustomPanorama not available
-        /*
         this.mc.getTextureManager().bindTexture(this.backgroundTexture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
@@ -297,89 +359,41 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         int i = 3;
         int j = 3;
 
-        // ... Blur logic would go here ...
+        for (int k = 0; k < j; ++k)
+        {
+            float f = 1.0F / (float)(k + 1);
+            int l = this.width;
+            int i1 = this.height;
+            float f1 = (float)(k - i / 2) / 256.0F;
+            worldrenderer.pos((double)l, (double)i1, (double)this.zLevel).tex((double)(0.0F + f1), 1.0D).color(1.0F, 1.0F, 1.0F, f).endVertex();
+            worldrenderer.pos((double)l, 0.0D, (double)this.zLevel).tex((double)(1.0F + f1), 1.0D).color(1.0F, 1.0F, 1.0F, f).endVertex();
+            worldrenderer.pos(0.0D, 0.0D, (double)this.zLevel).tex((double)(1.0F + f1), 0.0D).color(1.0F, 1.0F, 1.0F, f).endVertex();
+            worldrenderer.pos(0.0D, (double)i1, (double)this.zLevel).tex((double)(0.0F + f1), 0.0D).color(1.0F, 1.0F, 1.0F, f).endVertex();
+        }
 
         tessellator.draw();
         GlStateManager.enableAlpha();
         GlStateManager.colorMask(true, true, true, true);
-        */
-    }
-
-    private void renderSkybox(int p_73971_1_, int p_73971_2_, float p_73971_3_)
-    {
-        // REMOVED: CustomPanorama dependency not available
-        /*
-        this.mc.getFramebuffer().unbindFramebuffer();
-        GlStateManager.viewport(0, 0, 256, 256);
-        this.drawPanorama(p_73971_1_, p_73971_2_, p_73971_3_);
-        this.rotateAndBlurSkybox(p_73971_3_);
-        int i = 3;
-        CustomPanoramaProperties custompanoramaproperties = CustomPanorama.getCustomPanoramaProperties();
-
-        if (custompanoramaproperties != null)
-        {
-            i = custompanoramaproperties.getBlur3();
-        }
-
-        for (int j = 0; j < i; ++j)
-        {
-            this.rotateAndBlurSkybox(p_73971_3_);
-            this.rotateAndBlurSkybox(p_73971_3_);
-        }
-
-        this.mc.getFramebuffer().bindFramebuffer(true);
-        GlStateManager.viewport(0, 0, this.mc.displayWidth, this.mc.displayHeight);
-        // ... rest of skybox rendering ...
-        */
     }
 
     public void drawScreen(int mouseX, int mouseY, float partialTicks)
     {
         GlStateManager.disableAlpha();
-        // MainMenu.draw(initTime);  // REMOVED: MainMenu dependency not available
+        MainMenu.draw(initTime);
         GlStateManager.enableAlpha();
 
-        String titleText = "OpenMyau";
-        float scale = 4.0F; // change size here
-
-        GlStateManager.pushMatrix();
-        GlStateManager.disableBlend(); // keeps text sharp
-
-        GlStateManager.scale(scale, scale, scale);
-
-// real center correction when scaled
-        float x = (this.width / 2f) / scale
-                - (this.fontRendererObj.getStringWidth(titleText) / 2f);
-        float y = 20f / scale;
-
-
-// core
-        this.fontRendererObj.drawString(titleText, x, y, 0xFFFF3A3A, true);
-
-        GlStateManager.enableBlend();
-        GlStateManager.popMatrix();
-
+            FontProcess.getScaledFont("sans", 3.0f).drawCenteredString("OpenMyau+", this.width / 2, 35, -1);
 
         Tessellator tessellator = Tessellator.getInstance();
-        // WorldRenderer worldrenderer = tessellator.getWorldRenderer();  // REMOVED: Not used
+        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         int i = 274;
         int j = this.width / 2 - i / 2;
-        // int k = 30;  // REMOVED: Never used
+        int k = 30;
         int l = -2130706433;
         int i1 = 16777215;
         int j1 = 0;
         int k1 = Integer.MIN_VALUE;
-        // CustomPanoramaProperties custompanoramaproperties = CustomPanorama.getCustomPanoramaProperties();  // REMOVED: CustomPanorama dependency not available
 
-        /*
-        if (custompanoramaproperties != null)
-        {
-            l = custompanoramaproperties.getOverlay1Top();
-            i1 = custompanoramaproperties.getOverlay1Bottom();
-            j1 = custompanoramaproperties.getOverlay2Top();
-            k1 = custompanoramaproperties.getOverlay2Bottom();
-        }
-        */
 
         if (l != 0 || i1 != 0)
         {
@@ -394,38 +408,15 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
         if (this.mc.isDemo()) {
-            // Demo mode - additional handling can go here
+
         }
 
-        // REMOVED: Reflector dependency not available
-        /*
-        if (Reflector.FMLCommonHandler_getBrandings.exists())
-        {
-            Object object = Reflector.call(Reflector.FMLCommonHandler_instance, new Object[0]);
-            List<String> list = Lists.<String>reverse((List)Reflector.call(object, Reflector.FMLCommonHandler_getBrandings, new Object[] {Boolean.valueOf(true)}));
 
-            for (int l1 = 0; l1 < list.size(); ++l1)
-            {
-                String s1 = (String)list.get(l1);
-
-                if (!Strings.isNullOrEmpty(s1))
-                {
-                    this.drawString(this.fontRendererObj, s1, 2, this.height - (10 + l1 * (this.fontRendererObj.FONT_HEIGHT + 1)), 16777215);
-                }
-            }
-
-            if (Reflector.ForgeHooksClient_renderMainMenu.exists())
-            {
-                Reflector.call(Reflector.ForgeHooksClient_renderMainMenu, new Object[] {this, this.fontRendererObj, Integer.valueOf(this.width), Integer.valueOf(this.height)});
-            }
-        }
-        */
-
-        if (this.openGLWarning1 != null && !this.openGLWarning1.isEmpty())
+        if (this.openGLWarning1 != null && this.openGLWarning1.length() > 0)
         {
             drawRect(this.field_92022_t - 2, this.field_92021_u - 2, this.field_92020_v + 2, this.field_92019_w - 1, 1428160512);
             this.drawString(this.fontRendererObj, this.openGLWarning1, this.field_92022_t, this.field_92021_u, -1);
-            this.drawString(this.fontRendererObj, this.openGLWarning2, (this.width - this.field_92024_r) / 2, this.buttonList.get(0).yPosition - 12, -1);
+            this.drawString(this.fontRendererObj, this.openGLWarning2, (this.width - this.field_92024_r) / 2, ((myau.util.shader.impl.GuiButton)this.buttonList.get(0)).yPosition - 12, -1);
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
@@ -447,7 +438,7 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
 
         synchronized (this.threadLock)
         {
-            if (!this.openGLWarning1.isEmpty() && mouseX >= this.field_92022_t && mouseX <= this.field_92020_v && mouseY >= this.field_92021_u && mouseY <= this.field_92019_w)
+            if (this.openGLWarning1.length() > 0 && mouseX >= this.field_92022_t && mouseX <= this.field_92020_v && mouseY >= this.field_92021_u && mouseY <= this.field_92019_w)
             {
                 GuiConfirmOpenLink guiconfirmopenlink = new GuiConfirmOpenLink(this, this.openGLWarningLink, 13, true);
                 guiconfirmopenlink.disableSecurityWarning();
