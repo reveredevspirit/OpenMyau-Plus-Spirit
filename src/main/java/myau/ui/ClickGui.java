@@ -44,7 +44,6 @@ public class ClickGui extends GuiScreen {
         combatModules.add(Myau.moduleManager.getModule(Refill.class));
         combatModules.add(Myau.moduleManager.getModule(HitSelect.class));
         combatModules.add(Myau.moduleManager.getModule(BackTrack.class));
-        combatModules.add(Myau.moduleManager.getModule(TimerRangev999.class));
         combatModules.add(Myau.moduleManager.getModule(ClickAssits.class));
         combatModules.add(Myau.moduleManager.getModule(Criticals.class));
         combatModules.add(Myau.moduleManager.getModule(BlockHit.class));
@@ -70,7 +69,6 @@ public class ClickGui extends GuiScreen {
         List<Module> renderModules = new ArrayList<>();
         renderModules.add(Myau.moduleManager.getModule(ESP.class));
         renderModules.add(Myau.moduleManager.getModule(Chams.class));
-        renderModules.add(Myau.moduleManager.getModule(SwingSpeed.class));
         renderModules.add(Myau.moduleManager.getModule(FullBright.class));
         renderModules.add(Myau.moduleManager.getModule(Tracers.class));
         renderModules.add(Myau.moduleManager.getModule(NameTags.class));
@@ -87,7 +85,6 @@ public class ClickGui extends GuiScreen {
         renderModules.add(Myau.moduleManager.getModule(Trajectories.class));
         renderModules.add(Myau.moduleManager.getModule(Radar.class));
         renderModules.add(Myau.moduleManager.getModule(FPScounter.class));
-        renderModules.add(Myau.moduleManager.getModule(WaterMark.class));
 
         List<Module> playerModules = new ArrayList<>();
         playerModules.add(Myau.moduleManager.getModule(AutoHeal.class));
