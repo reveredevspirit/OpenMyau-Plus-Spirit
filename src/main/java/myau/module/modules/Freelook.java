@@ -16,7 +16,7 @@ import org.lwjgl.input.Mouse;
  * FreeLook - Allows free camera rotation while keeping movement direction locked.
  * Hold or toggle mode, smooth return option.
  */
-public class FreeLook extends Module {
+public class Freelook extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
