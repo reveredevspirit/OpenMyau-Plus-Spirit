@@ -4,12 +4,14 @@ import myau.event.EventTarget;
 import myau.events.TickEvent;
 import myau.module.Module;
 import myau.property.properties.BooleanProperty;
-import myau.property.properties.PercentProperty;
 import myau.property.properties.IntProperty;
+import myau.property.properties.PercentProperty;
+import myau.util.TeamUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemSword;
 import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
 
@@ -26,16 +28,11 @@ public class Autoblock extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
 
     // ── Properties ───────────────────────────────────────────────────────────────
-    public final PercentProperty range = new PercentProperty("Range", 4.5f); // 0–10 blocks, scaled
-
+    public final PercentProperty range = new PercentProperty("Range", 45); // 0–100 → 0–10 blocks
     public final IntProperty maxHurtTime = new IntProperty("Max Hurt Time", 8, 0, 10);
-
     public final IntProperty maxHoldDuration = new IntProperty("Max Hold Ticks", 5, 1, 20);
-
     public final IntProperty maxLagDuration = new IntProperty("Lag Comp Ticks", 3, 0, 10);
-
     public final BooleanProperty onlySword = new BooleanProperty("Only Sword", true);
-
     public final BooleanProperty onlyWhenSwinging = new BooleanProperty("Only Swinging", true);
 
     // ── Internal state ───────────────────────────────────────────────────────────
@@ -44,7 +41,7 @@ public class Autoblock extends Module {
 
     public Autoblock() {
         super("Autoblock", false);
-        setKeybind(Keyboard.KEY_NONE); // optional manual toggle key
+        setKeybind(Keyboard.KEY_NONE); // optional toggle key
     }
 
     @EventTarget
@@ -68,20 +65,20 @@ public class Autoblock extends Module {
 
         double distance = mc.thePlayer.getDistanceToEntity(target);
 
-        // Range check (scaled percent → blocks)
-        float realRange = range.getValue().floatValue() / 100f * 10f; // 0–10 blocks
+        // Range check (0–100 → 0–10 blocks)
+        float realRange = range.getValue().floatValue() / 10f;
         if (distance > realRange) {
             stopBlocking();
             return;
         }
 
-        // Optional: only block if enemy is swinging arm
+        // Only block if enemy is swinging arm
         if (onlyWhenSwinging.getValue() && target.swingProgressInt <= 0) {
             stopBlocking();
             return;
         }
 
-        // Hurt time check (don't block if enemy just hit us)
+        // Hurt time check (don't block if we just got hit)
         if (mc.thePlayer.hurtTime > maxHurtTime.getValue()) {
             stopBlocking();
             return;
@@ -93,18 +90,18 @@ public class Autoblock extends Module {
             blockTicks++;
         }
 
-        // Lag compensation: keep blocking a few extra ticks after target leaves range
+        // Lag compensation: keep blocking after target leaves range
         if (blockTicks > 0 && distance > realRange + 0.5) {
             blockTicks--;
-            if (blockTicks <= maxLagDuration.getValue()) {
+            if (blockTicks > 0) {
                 startBlocking();
             }
         }
     }
 
     private boolean isHoldingSword() {
-        return mc.thePlayer.getHeldItem() != null
-                && mc.thePlayer.getHeldItem().getItem() instanceof net.minecraft.item.ItemSword;
+        return mc.thePlayer.getCurrentEquippedItem() != null
+                && mc.thePlayer.getCurrentEquippedItem().getItem() instanceof ItemSword;
     }
 
     private EntityLivingBase getClosestEnemy() {
@@ -121,8 +118,8 @@ public class Autoblock extends Module {
     }
 
     private void startBlocking() {
-        if (!isBlocking) {
-            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.getHeldItem());
+        if (!isBlocking && mc.thePlayer.getCurrentEquippedItem() != null) {
+            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.getCurrentEquippedItem());
             isBlocking = true;
         }
     }
@@ -141,7 +138,6 @@ public class Autoblock extends Module {
         blockTicks = 0;
     }
 
-    // Optional HUD suffix
     @Override
     public String[] getSuffix() {
         return isBlocking ? new String[]{"BLOCKING"} : new String[0];
