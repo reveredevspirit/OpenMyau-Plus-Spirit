@@ -8,12 +8,11 @@ Based on **`OpenMyau`**, with added features and improvements not found in the o
 
 ## Changes
 
-* Added Click GUI (ported from Raven B3 by blowsy)
-* Fixed bugs
+** COMING SOON
 
 If you encounter an issue or have a feature suggestion, please [create an issue](https://github.com/60124808866/OpenMyau/issues).
 
-## Building
+## Building (COMING SOON)
 
 ```bash
 ./gradlew build
@@ -21,9 +20,6 @@ If you encounter an issue or have a feature suggestion, please [create an issue]
 
 ## Contributing
 
-You can open an issue or submit a pull request to help improve Open Myau.
+Shoutout ksyz, original openmyau devs etc.
 
-If you’re interested in co-developing or have questions, feel free to reach out:
-
-* Discord: `60124808866_88040`
-"# OpenMyau-Plus" 
+"# OpenMyau-v3" 
