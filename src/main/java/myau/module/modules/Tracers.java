@@ -277,7 +277,8 @@ public class Tracers extends Module {
             float blue  = color.getBlue()  / 255.0F;
             float alpha = color.getAlpha() / 255.0F;
 
-            float r        = (float) arrowRadius.getInput();
+            float percent = arrowRadius.getValue().floatValue();  // 0.0 to 100.0
+            float r = 30.0f + (percent / 100.0f) * 170.0f;       // 0% → 30, 100% → 200
             float rotation = (float)(Math.atan2(arrowDirY, arrowDirX) * (180.0 / Math.PI) + 90.0);
 
             GlStateManager.pushMatrix();
