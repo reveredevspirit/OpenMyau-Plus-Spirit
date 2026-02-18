@@ -554,4 +554,3 @@ public class KillAura extends Module {
         }
     }
 }
-}
