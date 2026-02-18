@@ -79,7 +79,6 @@ public class Myau {
         moduleManager.modules.put(BackTrack.class, new BackTrack());
         moduleManager.modules.put(FPScounter.class, new FPScounter());
         moduleManager.modules.put(Chams.class, new Chams());
-        moduleManager.modules.put(WaterMark.class, new WaterMark());
         moduleManager.modules.put(ChestESP.class, new ChestESP());
         moduleManager.modules.put(ChestStealer.class, new ChestStealer());
         moduleManager.modules.put(Eagle.class, new Eagle());
@@ -101,7 +100,6 @@ public class Myau {
         moduleManager.modules.put(InvWalk.class, new InvWalk());
         moduleManager.modules.put(Criticals.class, new Criticals());
         moduleManager.modules.put(FastBow.class, new FastBow());
-        moduleManager.modules.put(SwingSpeed.class, new SwingSpeed());
         moduleManager.modules.put(BlockHit.class, new BlockHit());
         moduleManager.modules.put(ClientSpoofer.class, new ClientSpoofer());
         moduleManager.modules.put(ItemESP.class, new ItemESP());
@@ -138,7 +136,6 @@ public class Myau {
         moduleManager.modules.put(TargetHUD.class, new TargetHUD());
         moduleManager.modules.put(TargetStrafe.class, new TargetStrafe());
         moduleManager.modules.put(Tracers.class, new Tracers());
-        moduleManager.modules.put(TimerRangev999.class, new TimerRangev999());
         moduleManager.modules.put(Trajectories.class, new Trajectories());
         moduleManager.modules.put(Velocity.class, new Velocity());
         moduleManager.modules.put(ViewClip.class, new ViewClip());
