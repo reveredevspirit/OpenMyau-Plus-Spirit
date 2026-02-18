@@ -43,8 +43,8 @@ public class Freelook extends Module {
     private float targetYawOffset = 0.0f;
     private float targetPitchOffset = 0.0f;
 
-    public FreeLook() {
-        super("FreeLook", true); // true = default enabled, change to false if you want it off by default
+    public Freelook() {
+        super("Freelook", true); // true = default enabled, change to false if you want it off by default
         setKeybind(Keyboard.KEY_F); // Default key: F
     }
 
