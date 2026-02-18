@@ -66,35 +66,32 @@ public class FreeLook extends Module {
         targetPitchOffset = 0.0f;
     }
 
-    @EventTarget
+        @EventTarget
     public void onTick(TickEvent event) {
-        if (event.getType() != TickEvent.Type.PRE) return;
+    if (event.getType() != TickEvent.Type.PRE) return;
 
-        KeyBinding sneakBind = mc.gameSettings.keyBindSneak;
-
-        // ── Activation logic ─────────────────────────────────────────────────────
-        if (mode.is("Hold")) {
-            isActive = isKeybindDown();
-        } else { // Toggle
-            if (isKeyPressedThisTick()) {
-                isActive = !isActive;
-            }
-        }
-
-        // ── Smooth return when freelook ends ─────────────────────────────────────
-        if (!isActive && smoothReturn.getValue()) {
-            targetYawOffset = 0.0f;
-            targetPitchOffset = 0.0f;
-
-            float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f; // 0–0.25 per tick
-            currentYawOffset   += (targetYawOffset   - currentYawOffset)   * speed;
-            currentPitchOffset += (targetPitchOffset - currentPitchOffset) * speed;
-
-            // Snap when very close
-            if (Math.abs(currentYawOffset)   < 0.05f) currentYawOffset   = 0.0f;
-            if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
+    // ── Activation logic ─────────────────────────────────────────────────────
+    if (mode.getValue() == 0) { // "Hold"
+        isActive = isKeybindDown();
+    } else { // "Toggle" (index 1)
+        if (isKeyPressedThisTick()) {
+            isActive = !isActive;
         }
     }
+
+    // ── Smooth return when freelook ends ─────────────────────────────────────
+    if (!isActive && smoothReturn.getValue()) {
+        targetYawOffset = 0.0f;
+        targetPitchOffset = 0.0f;
+
+        float speed = returnSpeed.getValue().floatValue() / 100f * 0.25f;
+        currentYawOffset   += (targetYawOffset   - currentYawOffset)   * speed;
+        currentPitchOffset += (targetPitchOffset - currentPitchOffset) * speed;
+
+        if (Math.abs(currentYawOffset)   < 0.05f) currentYawOffset   = 0.0f;
+        if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
+    }
+}
 
     @EventTarget
     public void onMouse(MouseEvent event) {
