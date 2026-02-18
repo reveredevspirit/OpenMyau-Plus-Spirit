@@ -104,7 +104,11 @@ public class Autoblock extends Module {
 
     private void startBlocking() {
         if (!isBlocking && mc.thePlayer.getCurrentEquippedItem() != null) {
-            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.getCurrentEquippedItem());
+            mc.playerController.sendUseItem(
+                mc.thePlayer,
+                mc.theWorld,
+                mc.thePlayer.getCurrentEquippedItem()
+            );
             isBlocking = true;
         }
     }
@@ -122,9 +126,3 @@ public class Autoblock extends Module {
         stopBlocking();
         blockTicks = 0;
     }
-
-    @Override
-    public String[] getSuffix() {
-        return isBlocking ? new String[]{"BLOCKING"} : new String[0];
-    }
-}
