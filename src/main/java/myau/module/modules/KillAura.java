@@ -1,12 +1,13 @@
 package myau.module.modules;
 
+import com.google.common.base.CaseFormat;
 import myau.Myau;
+import myau.enums.BlinkModules;
 import myau.event.EventManager;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
-import myau.events.AttackEvent;
-import myau.events.UpdateEvent;
+import myau.events.*;
 import myau.management.RotationState;
 import myau.mixin.IAccessorPlayerControllerMP;
 import myau.module.Module;
@@ -15,6 +16,7 @@ import myau.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.entity.DataWatcher.WatchableObject;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
@@ -32,22 +34,23 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C02PacketUseEntity;
 import net.minecraft.network.play.client.C02PacketUseEntity.Action;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
+import net.minecraft.network.play.server.S06PacketUpdateHealth;
+import net.minecraft.network.play.server.S1CPacketEntityMetadata;
+import net.minecraft.util.*;
+import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 import net.minecraft.world.WorldSettings.GameType;
 
+import java.awt.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Random;
 
 public class KillAura extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     private static final DecimalFormat df = new DecimalFormat("+0.0;-0.0", new DecimalFormatSymbols(Locale.US));
-
-    public static boolean isAttacking = false;
 
     private final TimerUtil timer = new TimerUtil();
     private AttackData target = null;
@@ -55,6 +58,8 @@ public class KillAura extends Module {
     private boolean hitRegistered = false;
     private long attackDelayMS = 0L;
     private int lastTickProcessed;
+
+    // Removed ALL autoblock fields
 
     public final ModeProperty mode;
     public final ModeProperty sort;
@@ -87,10 +92,11 @@ public class KillAura extends Module {
 
     public KillAura() {
         super("KillAura", false);
-        this.lastTickProcessed = 0;
 
         this.mode = new ModeProperty("mode", 0, new String[]{"SINGLE", "SWITCH"});
         this.sort = new ModeProperty("sort", 0, new String[]{"DISTANCE", "HEALTH", "HURT_TIME", "FOV"});
+
+        // Removed ALL autoblock GUI settings
 
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
         this.attackRange = new FloatProperty("attack-range", 3.0F, 3.0F, 6.0F);
@@ -98,10 +104,12 @@ public class KillAura extends Module {
         this.minCPS = new IntProperty("min-aps", 14, 1, 20);
         this.maxCPS = new IntProperty("max-aps", 14, 1, 20);
         this.switchDelay = new IntProperty("switch-delay", 150, 0, 1000);
+
         this.rotations = new ModeProperty("rotations", 2, new String[]{"NONE", "LEGIT", "SILENT", "LOCK_VIEW"});
         this.moveFix = new ModeProperty("move-fix", 1, new String[]{"NONE", "SILENT", "STRICT"});
         this.smoothing = new PercentProperty("smoothing", 0);
         this.angleStep = new IntProperty("angle-step", 90, 30, 180);
+
         this.throughWalls = new BooleanProperty("through-walls", true);
         this.requirePress = new BooleanProperty("require-press", false);
         this.allowMining = new BooleanProperty("allow-mining", true);
@@ -135,7 +143,8 @@ public class KillAura extends Module {
         if (!this.weaponsOnly.getValue()
                 || ItemUtil.hasRawUnbreakingEnchant()
                 || this.allowTools.getValue() && ItemUtil.isHoldingTool()) {
-            return !this.requirePress.getValue() || KeyBindUtil.isKeyDown(mc.gameSettings.keyBindAttack.getKeyCode());
+            return !this.requirePress.getValue()
+                    || KeyBindUtil.isKeyDown(mc.gameSettings.keyBindAttack.getKeyCode());
         }
         return false;
     }
@@ -154,3 +163,390 @@ public class KillAura extends Module {
             if (autoHeal.isEnabled() && autoHeal.isSwitching()) return false;
 
             BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
+            if (bedNuker.isEnabled() && bedNuker.isReady()) return false;
+
+            if (Myau.moduleManager.modules.get(Scaffold.class).isEnabled()) return false;
+
+            if (this.requirePress.getValue()) {
+                return PlayerUtil.isAttacking();
+            } else {
+                return !this.allowMining.getValue()
+                        || !mc.objectMouseOver.typeOfHit.equals(MovingObjectType.BLOCK)
+                        || !PlayerUtil.isAttacking();
+            }
+        }
+        return false;
+    }
+
+    private boolean isValidTarget(EntityLivingBase entityLivingBase) {
+        if (!mc.theWorld.loadedEntityList.contains(entityLivingBase)) return false;
+        if (entityLivingBase == mc.thePlayer || entityLivingBase == mc.thePlayer.ridingEntity) return false;
+        if (entityLivingBase == mc.getRenderViewEntity() || entityLivingBase == mc.getRenderViewEntity().ridingEntity) return false;
+        if (entityLivingBase.deathTime > 0) return false;
+        if (RotationUtil.angleToEntity(entityLivingBase) > this.fov.getValue().floatValue()) return false;
+        if (!this.throughWalls.getValue() && RotationUtil.rayTrace(entityLivingBase) != null) return false;
+
+        if (entityLivingBase instanceof EntityOtherPlayerMP) {
+            if (!this.players.getValue()) return false;
+            if (TeamUtil.isFriend((EntityPlayer) entityLivingBase)) return false;
+            if (this.teams.getValue() && TeamUtil.isSameTeam((EntityPlayer) entityLivingBase)) return false;
+            if (this.botCheck.getValue() && TeamUtil.isBot((EntityPlayer) entityLivingBase)) return false;
+            return true;
+        }
+
+        if (entityLivingBase instanceof EntityDragon || entityLivingBase instanceof EntityWither)
+            return this.bosses.getValue();
+
+        if (entityLivingBase instanceof EntityMob || entityLivingBase instanceof EntitySlime) {
+            if (entityLivingBase instanceof EntitySilverfish)
+                return this.silverfish.getValue() && (!this.teams.getValue() || !TeamUtil.hasTeamColor(entityLivingBase));
+            return this.mobs.getValue();
+        }
+
+        if (entityLivingBase instanceof EntityAnimal
+                || entityLivingBase instanceof EntityBat
+                || entityLivingBase instanceof EntitySquid
+                || entityLivingBase instanceof EntityVillager)
+            return this.animals.getValue();
+
+        if (entityLivingBase instanceof EntityIronGolem)
+            return this.golems.getValue() && (!this.teams.getValue() || !TeamUtil.hasTeamColor(entityLivingBase));
+
+        return false;
+    }
+
+    private boolean isInSwingRange(EntityLivingBase entityLivingBase) {
+        return RotationUtil.distanceToEntity(entityLivingBase) <= this.swingRange.getValue();
+    }
+
+    private boolean isInAttackRange(EntityLivingBase entityLivingBase) {
+        return RotationUtil.distanceToEntity(entityLivingBase) <= this.attackRange.getValue();
+    }
+
+    private boolean isBoxInSwingRange(AxisAlignedBB axisAlignedBB) {
+        return RotationUtil.distanceToBox(axisAlignedBB) <= this.swingRange.getValue();
+    }
+
+    private boolean isBoxInAttackRange(AxisAlignedBB axisAlignedBB) {
+        return RotationUtil.distanceToBox(axisAlignedBB) <= this.attackRange.getValue();
+    }
+
+    // END OF PART 1
+    private boolean performAttack(float yaw, float pitch) {
+        if (Myau.playerStateManager.digging || Myau.playerStateManager.placing)
+            return false;
+
+        if (this.attackDelayMS > 0L)
+            return false;
+
+        this.attackDelayMS += this.getAttackDelay();
+        mc.thePlayer.swingItem();
+
+        if ((this.rotations.getValue() != 0 || !this.isBoxInAttackRange(this.target.getBox()))
+                && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
+            return false;
+        }
+
+        AttackEvent event = new AttackEvent(this.target.getEntity());
+        EventManager.call(event);
+
+        ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+        PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
+
+        if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR)
+            PlayerUtil.attackEntity(this.target.getEntity());
+
+        this.hitRegistered = true;
+        return true;
+    }
+
+    @EventTarget(Priority.LOW)
+    public void onUpdate(UpdateEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (event.getType() == EventType.PRE) {
+
+            if (this.attackDelayMS > 0L)
+                this.attackDelayMS -= 50L;
+
+            boolean attack = this.target != null && this.canAttack();
+            boolean attacked = false;
+
+            if (attack && this.isBoxInSwingRange(this.target.getBox())) {
+
+                if (this.rotations.getValue() == 2 || this.rotations.getValue() == 3) {
+                    float[] rotations = RotationUtil.getRotationsToBox(
+                            this.target.getBox(),
+                            event.getYaw(),
+                            event.getPitch(),
+                            (float) this.angleStep.getValue() + RandomUtil.nextFloat(-5.0F, 5.0F),
+                            (float) this.smoothing.getValue() / 100.0F
+                    );
+
+                    event.setRotation(rotations[0], rotations[1], 1);
+
+                    if (this.rotations.getValue() == 3)
+                        Myau.rotationManager.setRotation(rotations[0], rotations[1], 1, true);
+
+                    if (this.moveFix.getValue() != 0 || this.rotations.getValue() == 3)
+                        event.setPervRotation(rotations[0], 1);
+                }
+
+                attacked = this.performAttack(event.getNewYaw(), event.getNewPitch());
+            }
+        }
+    }
+
+    @EventTarget
+    public void onTick(TickEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        switch (event.getType()) {
+            case PRE:
+
+                if (this.target == null
+                        || !this.isValidTarget(this.target.getEntity())
+                        || !this.isBoxInAttackRange(this.target.getBox())
+                        || !this.isBoxInSwingRange(this.target.getBox())
+                        || this.timer.hasTimeElapsed(this.switchDelay.getValue().longValue())) {
+
+                    this.timer.reset();
+                    ArrayList<EntityLivingBase> targets = new ArrayList<>();
+
+                    for (Entity entity : mc.theWorld.loadedEntityList) {
+                        if (entity instanceof EntityLivingBase
+                                && this.isValidTarget((EntityLivingBase) entity)
+                                && (this.isInSwingRange((EntityLivingBase) entity)
+                                || this.isInAttackRange((EntityLivingBase) entity))) {
+                            targets.add((EntityLivingBase) entity);
+                        }
+                    }
+
+                    if (targets.isEmpty()) {
+                        this.target = null;
+                    } else {
+
+                        if (targets.stream().anyMatch(this::isInSwingRange))
+                            targets.removeIf(e -> !this.isInSwingRange(e));
+
+                        if (targets.stream().anyMatch(this::isInAttackRange))
+                            targets.removeIf(e -> !this.isInAttackRange(e));
+
+                        if (targets.stream().anyMatch(this::isPlayerTarget))
+                            targets.removeIf(e -> !this.isPlayerTarget(e));
+
+                        targets.sort((a, b) -> {
+                            int sortBase = 0;
+                            switch (this.sort.getValue()) {
+                                case 1:
+                                    sortBase = Float.compare(TeamUtil.getHealthScore(a), TeamUtil.getHealthScore(b));
+                                    break;
+                                case 2:
+                                    sortBase = Integer.compare(a.hurtResistantTime, b.hurtResistantTime);
+                                    break;
+                                case 3:
+                                    sortBase = Float.compare(
+                                            RotationUtil.angleToEntity(a),
+                                            RotationUtil.angleToEntity(b)
+                                    );
+                                    break;
+                            }
+                            return sortBase != 0
+                                    ? sortBase
+                                    : Double.compare(RotationUtil.distanceToEntity(a), RotationUtil.distanceToEntity(b));
+                        });
+
+                        if (this.mode.getValue() == 1 && this.hitRegistered) {
+                            this.hitRegistered = false;
+                            this.switchTick++;
+                        }
+
+                        if (this.mode.getValue() == 0 || this.switchTick >= targets.size())
+                            this.switchTick = 0;
+
+                        this.target = new AttackData(targets.get(this.switchTick));
+                    }
+                }
+
+                if (this.target != null)
+                    this.target = new AttackData(this.target.getEntity());
+
+                break;
+
+            case POST:
+                // No autoblock → no need to reapply item use
+                break;
+        }
+    }
+    @EventTarget(Priority.LOWEST)
+    public void onPacket(PacketEvent event) {
+        if (!this.isEnabled() || event.isCancelled() || mc.thePlayer == null || mc.theWorld == null)
+            return;
+
+        if (this.debugLog.getValue() == 1 && this.isAttackAllowed()) {
+
+            if (event.getPacket() instanceof S06PacketUpdateHealth) {
+                float diff = ((S06PacketUpdateHealth) event.getPacket()).getHealth() - mc.thePlayer.getHealth();
+
+                if (diff != 0.0F && this.lastTickProcessed != mc.thePlayer.ticksExisted) {
+                    this.lastTickProcessed = mc.thePlayer.ticksExisted;
+
+                    ChatUtil.sendFormatted(
+                            String.format(
+                                    "%sHealth: %s&l%s&r (&otick: %d&r)&r",
+                                    Myau.clientName,
+                                    diff > 0.0F ? "&a" : "&c",
+                                    df.format(diff),
+                                    mc.thePlayer.ticksExisted
+                            )
+                    );
+                }
+            }
+
+            if (event.getPacket() instanceof S1CPacketEntityMetadata) {
+                S1CPacketEntityMetadata packet = (S1CPacketEntityMetadata) event.getPacket();
+
+                if (packet.getEntityId() == mc.thePlayer.getEntityId()) {
+                    for (WatchableObject watchableObject : packet.func_149376_c()) {
+                        if (watchableObject.getDataValueId() == 6) {
+                            float diff = (Float) watchableObject.getObject() - mc.thePlayer.getHealth();
+
+                            if (diff != 0.0F && this.lastTickProcessed != mc.thePlayer.ticksExisted) {
+                                this.lastTickProcessed = mc.thePlayer.ticksExisted;
+
+                                ChatUtil.sendFormatted(
+                                        String.format(
+                                                "%sHealth: %s&l%s&r (&otick: %d&r)&r",
+                                                Myau.clientName,
+                                                diff > 0.0F ? "&a" : "&c",
+                                                df.format(diff),
+                                                mc.thePlayer.ticksExisted
+                                        )
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @EventTarget
+    public void onMove(MoveInputEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (this.moveFix.getValue() == 1
+                && this.rotations.getValue() != 3
+                && RotationState.isActived()
+                && RotationState.getPriority() == 1.0F
+                && MoveUtil.isForwardPressed()) {
+
+            MoveUtil.fixStrafe(RotationState.getSmoothedYaw());
+        }
+    }
+
+    @EventTarget
+    public void onRender(Render3DEvent event) {
+        if (!this.isEnabled() || this.target == null)
+            return;
+
+        if (this.showTarget.getValue() != 0
+                && TeamUtil.isEntityLoaded(this.target.getEntity())
+                && this.isAttackAllowed()) {
+
+            Color color = new Color(-1);
+
+            switch (this.showTarget.getValue()) {
+                case 1:
+                    color = this.target.getEntity().hurtTime > 0
+                            ? new Color(16733525)
+                            : new Color(5635925);
+                    break;
+
+                case 2:
+                    color = ((HUD) Myau.moduleManager.modules.get(HUD.class))
+                            .getColor(System.currentTimeMillis());
+                    break;
+            }
+
+            RenderUtil.enableRenderState();
+            RenderUtil.drawEntityBox(
+                    this.target.getEntity(),
+                    color.getRed(),
+                    color.getGreen(),
+                    color.getBlue()
+            );
+            RenderUtil.disableRenderState();
+        }
+    }
+
+    // D1 — Keep click cancellation when attacking
+    @EventTarget
+    public void onLeftClick(LeftClickMouseEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (this.target != null && this.canAttack())
+            event.setCancelled(true);
+    }
+
+    @EventTarget
+    public void onRightClick(RightClickMouseEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (this.target != null && this.canAttack())
+            event.setCancelled(true);
+    }
+
+    @EventTarget
+    public void onHitBlock(HitBlockEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (this.target != null && this.canAttack())
+            event.setCancelled(true);
+    }
+
+    @EventTarget
+    public void onCancelUse(CancelUseEvent event) {
+        if (!this.isEnabled())
+            return;
+
+        if (this.target != null && this.canAttack())
+            event.setCancelled(true);
+    }
+
+    @Override
+    public void onEnabled() {
+        this.target = null;
+        this.switchTick = 0;
+        this.hitRegistered = false;
+        this.attackDelayMS = 0L;
+    }
+
+    @Override
+    public void onDisabled() {
+        this.target = null;
+        this.hitRegistered = false;
+        this.switchTick = 0;
+        this.attackDelayMS = 0L;
+    }
+
+    @Override
+    public void verifyValue(String value) {
+        if (this.swingRange.getName().equals(value)) {
+            if (this.swingRange.getValue() < this.attackRange.getValue())
+                this.attackRange.setValue(this.swingRange.getValue());
+        } else if (this.attackRange.getName().equals(value)) {
+            if (this.swingRange.getValue() < this.attackRange.getValue())
+                this.swingRange.setValue(this.attackRange.getValue());
+        } else if (this.minCPS.getName().equals(value)) {
+            if (this.minCPS.getValue() > this.maxCPS.getValue())
+                this.maxCPS.setValue(this.minCPS.getValue());
+        }
+    }
+}
