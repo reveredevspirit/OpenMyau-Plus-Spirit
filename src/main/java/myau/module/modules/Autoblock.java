@@ -122,7 +122,7 @@ public class Autoblock extends Module {
     }
 
     @Override
-    public void onDisable() {
+    public void onDisabled() {
         stopBlocking();
         blockTicks = 0;
     }
