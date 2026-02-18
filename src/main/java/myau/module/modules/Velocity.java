@@ -53,7 +53,6 @@ public class Velocity extends Module {
     private boolean canDelay() {
     KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
     Autoblock autoblock = (Autoblock) Myau.moduleManager.modules.get(Autoblock.class);
-
     return mc.thePlayer.onGround && (!killAura.isEnabled() || !autoblock.isBlocking());
 }
 
