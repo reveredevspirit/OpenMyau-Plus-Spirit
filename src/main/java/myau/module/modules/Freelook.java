@@ -11,15 +11,10 @@ import net.minecraft.client.Minecraft;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
-/**
- * FreeLook - Allows free camera rotation while keeping movement direction locked.
- * Hold or toggle mode, smooth return option.
- */
 public class Freelook extends Module {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    // ── Properties ───────────────────────────────────────────────────────────────
     public final ModeProperty mode = new ModeProperty("Mode", 0, new String[]{"Hold", "Toggle"});
 
     public final PercentProperty sensitivity = new PercentProperty("Sensitivity", 100);
@@ -28,7 +23,6 @@ public class Freelook extends Module {
 
     public final PercentProperty returnSpeed = new PercentProperty("Return Speed", 50);
 
-    // ── Internal state ───────────────────────────────────────────────────────────
     private boolean isActive = false;
     private float currentYawOffset = 0.0f;
     private float currentPitchOffset = 0.0f;
@@ -37,7 +31,6 @@ public class Freelook extends Module {
 
     public Freelook() {
         super("Freelook", true);
-        setKeybind(Keyboard.KEY_F);
     }
 
     @Override
@@ -62,7 +55,6 @@ public class Freelook extends Module {
     public void onTick(TickEvent event) {
         if (event.getType() != TickEvent.Type.PRE) return;
 
-        // Activation logic
         if (mode.getValue() == 0) { // Hold
             isActive = isKeybindDown();
         } else { // Toggle
@@ -71,7 +63,6 @@ public class Freelook extends Module {
             }
         }
 
-        // Smooth return when freelook ends
         if (!isActive && smoothReturn.getValue()) {
             targetYawOffset = 0.0f;
             targetPitchOffset = 0.0f;
@@ -84,7 +75,6 @@ public class Freelook extends Module {
             if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
         }
 
-        // Poll mouse movement when active
         if (isActive && mc.currentScreen == null) {
             int dx = Mouse.getDX();
             int dy = Mouse.getDY();
@@ -92,7 +82,7 @@ public class Freelook extends Module {
             if (dx != 0 || dy != 0) {
                 float sensMult = sensitivity.getValue().floatValue() / 100f;
                 float yawDelta = dx * 0.15f * sensMult;
-                float pitchDelta = dy * 0.15f * sensMult * -1f; // invert Y
+                float pitchDelta = dy * 0.15f * sensMult * -1f;
 
                 targetYawOffset += yawDelta;
                 targetPitchOffset += pitchDelta;
@@ -106,11 +96,9 @@ public class Freelook extends Module {
     public void onRender3D(Render3DEvent event) {
         if (!isActive) return;
 
-        // Apply camera offsets
         mc.thePlayer.rotationYawHead = mc.thePlayer.rotationYaw + currentYawOffset;
         mc.thePlayer.rotationPitchHead = mc.thePlayer.rotationPitch + currentPitchOffset;
 
-        // Smooth interpolation
         float lerpFactor = 0.85f;
         currentYawOffset = lerp(currentYawOffset, targetYawOffset, lerpFactor);
         currentPitchOffset = lerp(currentPitchOffset, targetPitchOffset, lerpFactor);
