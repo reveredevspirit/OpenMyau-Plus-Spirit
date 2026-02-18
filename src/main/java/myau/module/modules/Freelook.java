@@ -36,12 +36,10 @@ public class Freelook extends Module {
     public void onTick(TickEvent event) {
         if (!isEnabled()) return;
 
-        // ── Activation ───────────────────────────────────────────────────────
+        // Activation
         if (mode.getValue() == 0) {
-            // Hold mode
             isActive = Keyboard.isKeyDown(Keyboard.KEY_F);
         } else {
-            // Toggle mode
             if (Keyboard.isKeyDown(Keyboard.KEY_F)) {
                 if (!wasPressed) {
                     isActive   = !isActive;
@@ -52,7 +50,7 @@ public class Freelook extends Module {
             }
         }
 
-        // ── Smooth return when inactive ──────────────────────────────────────
+        // Smooth return when inactive
         if (!isActive && smoothReturn.getValue()) {
             targetYawOffset   = 0.0f;
             targetPitchOffset = 0.0f;
@@ -63,14 +61,14 @@ public class Freelook extends Module {
             if (Math.abs(currentPitchOffset) < 0.05f) currentPitchOffset = 0.0f;
         }
 
-        // ── Poll mouse when active ───────────────────────────────────────────
+        // Poll mouse when active
         if (isActive && mc.currentScreen == null) {
             int dx = Mouse.getDX();
             int dy = Mouse.getDY();
             if (dx != 0 || dy != 0) {
-                float sensMult  = sensitivity.getValue().floatValue() / 100f;
-                float yawDelta  =  dx * 0.15f * sensMult;
-                float pitchDelta = dy * 0.15f * sensMult * -1f;
+                float sensMult   = sensitivity.getValue().floatValue() / 100f;
+                float yawDelta   =  dx * 0.15f * sensMult;
+                float pitchDelta =  dy * 0.15f * sensMult * -1f;
                 targetYawOffset   += yawDelta;
                 targetPitchOffset += pitchDelta;
                 targetPitchOffset  = Math.max(-90.0f, Math.min(90.0f, targetPitchOffset));
@@ -83,9 +81,9 @@ public class Freelook extends Module {
         if (!isEnabled()) return;
         if (!isActive && currentYawOffset == 0.0f && currentPitchOffset == 0.0f) return;
 
-        mc.thePlayer.renderYawOffset    = mc.thePlayer.rotationYaw   + currentYawOffset;
-        mc.thePlayer.rotationYawHead    = mc.thePlayer.rotationYaw   + currentYawOffset;
-        mc.thePlayer.rotationPitchHead  = mc.thePlayer.rotationPitch + currentPitchOffset;
+        // rotationPitchHead does not exist in 1.8.9 MCP mappings — yaw offset only
+        mc.thePlayer.renderYawOffset = mc.thePlayer.rotationYaw + currentYawOffset;
+        mc.thePlayer.rotationYawHead = mc.thePlayer.rotationYaw + currentYawOffset;
 
         float lerpFactor   = 0.85f;
         currentYawOffset   = lerp(currentYawOffset,   targetYawOffset,   lerpFactor);
@@ -97,10 +95,9 @@ public class Freelook extends Module {
     }
 
     @Override
-    public void onDisable() {
-        // Reset camera state so the view snaps back instantly on disable
-        isActive          = false;
-        wasPressed        = false;
+    public void onDisabled() {
+        isActive           = false;
+        wasPressed         = false;
         currentYawOffset   = 0.0f;
         currentPitchOffset = 0.0f;
         targetYawOffset    = 0.0f;
