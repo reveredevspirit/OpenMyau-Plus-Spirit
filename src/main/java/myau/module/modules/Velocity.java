@@ -50,9 +50,10 @@ public class Velocity extends Module {
         return mc.thePlayer.isInWater() || mc.thePlayer.isInLava() || ((IAccessorEntity) mc.thePlayer).getIsInWeb();
     }
 
-    private boolean canDelay() {
+private boolean canDelay() {
     KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
     Autoblock autoblock = (Autoblock) Myau.moduleManager.modules.get(Autoblock.class);
+
     return mc.thePlayer.onGround && (!killAura.isEnabled() || !autoblock.isBlocking());
 }
 
