@@ -1,93 +1,27 @@
-package myau.ui.hud;
+package myau.module.modules;
 
 import myau.module.Module;
-import myau.module.ModuleManager;
-import myau.ui.clickgui.RoundedUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
+import myau.module.Category;
+import myau.property.Property;
+import java.awt.Color;
 
-import java.util.HashMap;
-import java.util.Map;
+public class HUD extends Module {
 
-public class HUD {
+    public final Property<Boolean> toggleSound = new Property<>("ToggleSound", true);
+    public final Property<Integer> red = new Property<>("Red", 85);
+    public final Property<Integer> green = new Property<>("Green", 170);
+    public final Property<Integer> blue = new Property<>("Blue", 255);
 
-    private static final Minecraft mc = Minecraft.getMinecraft();
+    public HUD() {
+        super("HUD", Category.RENDER);
+        this.addProperties(toggleSound, red, green, blue);
+    }
 
-    // Animation state per module
-    private final Map<Module, Float> slideAnim = new HashMap<>();
-    private final Map<Module, Float> alphaAnim = new HashMap<>();
+    public Color getColor(long time) {
+        return new Color(red.getValue(), green.getValue(), blue.getValue());
+    }
 
-    public void render() {
-
-        ScaledResolution sr = new ScaledResolution(mc);
-        int screenWidth = sr.getScaledWidth();
-
-        int y = 5;
-
-        // Sort modules by width (longest first)
-        ModuleManager.getModules().stream()
-                .filter(Module::isEnabled)
-                .sorted((a, b) -> {
-                    int w1 = mc.fontRendererObj.getStringWidth(a.getName());
-                    int w2 = mc.fontRendererObj.getStringWidth(b.getName());
-                    return Integer.compare(w2, w1);
-                })
-                .forEach(module -> {
-
-                    String name = module.getName();
-                    int textWidth = mc.fontRendererObj.getStringWidth(name);
-                    int boxWidth = textWidth + 10;
-
-                    // Initialize animations
-                    slideAnim.putIfAbsent(module, 0f);
-                    alphaAnim.putIfAbsent(module, 0f);
-
-                    // Target animation values
-                    float slideTarget = boxWidth;
-                    float alphaTarget = 255f;
-
-                    // Smooth animation
-                    float slide = slideAnim.get(module);
-                    slide += (slideTarget - slide) * 0.2f;
-                    slideAnim.put(module, slide);
-
-                    float alpha = alphaAnim.get(module);
-                    alpha += (alphaTarget - alpha) * 0.2f;
-                    alphaAnim.put(module, alpha);
-
-                    // Right‑side X position
-                    int x = (int)(screenWidth - slide);
-
-                    // Background (rounded)
-                    int bgColor = (int)(alpha) << 24 | 0x101010;
-                    RoundedUtils.drawRoundedRect(
-                            x - 2,
-                            y - 2,
-                            boxWidth,
-                            14,
-                            4,
-                            bgColor
-                    );
-
-                    // Static blue accent bar
-                    RoundedUtils.drawRoundedRect(
-                            x - 4,
-                            y - 2,
-                            2,
-                            14,
-                            2,
-                            0xFF55AAFF
-                    );
-
-                    // Text
-                    mc.fontRendererObj.drawString(
-                            name,
-                            x + 3,
-                            y + 3,
-                            0xFFFFFFFF
-                    );
-
-                    y += 16;
-                });
+    public Color getColor(long time, float offset) {
+        return getColor(time);
     }
 }
