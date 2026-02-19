@@ -28,7 +28,6 @@ public class ModulePanel {
 
     private KeybindSetting listeningKeybind = null;
 
-    // Scrolling
     private int scrollOffset = 0;
     private int visibleHeight = 200;
 
@@ -48,7 +47,7 @@ public class ModulePanel {
 
     public void handleScroll(int delta) {
         int maxScroll = Math.max(0, getContentHeight() - visibleHeight);
-        scrollOffset -= delta / 5;
+        scrollOffset += delta > 0 ? -8 : 8;
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
     }
 
@@ -156,11 +155,9 @@ public class ModulePanel {
 
                         RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
 
-                        // Setting name on left
                         GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
-                        // Current value + arrows on right
                         String val = "< " + dropdown.getValue() + " >";
                         int valW = mc.fontRendererObj.getStringWidth(val);
                         GL11.glColor4f(1f, 1f, 1f, 1f);
@@ -215,8 +212,8 @@ public class ModulePanel {
         // Scrollbar
         int totalH = getContentHeight();
         if (totalH > visibleHeight) {
-            int barH = (int)((float) visibleHeight / totalH * visibleHeight);
-            int barY = y + (int)((float) scrollOffset / totalH * visibleHeight);
+            int barH = Math.max(20, (int)((float) visibleHeight / totalH * visibleHeight));
+            int barY = y + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (visibleHeight - barH));
             drawSolidRect(x + 163, y, x + 166, y + visibleHeight, 0xFF333333);
             drawSolidRect(x + 163, barY, x + 166, barY + barH, 0xFF55AAFF);
         }
@@ -278,13 +275,8 @@ public class ModulePanel {
 
                         if (mouseX >= x + 6 && mouseX <= x + width &&
                             mouseY >= offsetY && mouseY <= offsetY + 16) {
-                            if (button == 0) {
-                                // Left click = next
-                                dropdown.next();
-                            } else if (button == 1) {
-                                // Right click = prev
-                                dropdown.prev();
-                            }
+                            if (button == 0) dropdown.next();
+                            else if (button == 1) dropdown.prev();
                         }
 
                         offsetY += 17;
