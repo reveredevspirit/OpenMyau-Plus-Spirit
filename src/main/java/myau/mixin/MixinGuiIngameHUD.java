@@ -12,8 +12,10 @@ public class MixinGuiIngameHUD {
 
     private final ArraylistHUD hud = new ArraylistHUD();
 
-    @Inject(method = "renderGameOverlay", at = @At("RETURN"))
+    // SRG name for GuiIngame.renderGameOverlay(float)
+    @Inject(method = "func_175180_a", at = @At("RETURN"))
     private void renderHUD(float partialTicks, CallbackInfo ci) {
+        System.out.println("HUD MIXIN FIRED");
         hud.render();
     }
 }
