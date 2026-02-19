@@ -18,7 +18,13 @@ public class GuiModule extends Module {
     public void onEnabled() {
         setEnabled(false);
         if (clickGui == null) {
-            clickGui = new Rise6ClickGui();
+            clickGui = new Rise6ClickGui(
+        ClickGui.combatModules,
+        ClickGui.movementModules,
+        ClickGui.playerModules,
+        ClickGui.renderModules,
+        ClickGui.miscModules
+);
         }
         mc.displayGuiScreen(clickGui);
     }
