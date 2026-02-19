@@ -1,5 +1,6 @@
 package myau.module.modules;
 
+import myau.ui.ClickGui
 import myau.module.Module;
 import myau.ui.clickgui.Rise6ClickGui;
 import net.minecraft.client.Minecraft;
