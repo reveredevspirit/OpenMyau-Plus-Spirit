@@ -1,10 +1,8 @@
 package myau.ui.clickgui;
 
-import myau.Myau;
 import myau.module.Module;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiScreen;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +29,7 @@ public class ModulePanel {
     public void setCategory(SidebarCategory category) {
         this.category = category;
         modules.clear();
-
-        // Load modules from module manager by category name
-        for (Module m : Myau.moduleManager.modules.values()) {
-            if (m.category.equalsIgnoreCase(category.getName())) {
-                modules.add(m);
-            }
-        }
+        modules.addAll(category.getModules()); // <-- Correct for your client
     }
 
     public void render(int x, int y, int mouseX, int mouseY, String searchText) {
@@ -47,32 +39,41 @@ public class ModulePanel {
 
         int offsetY = y + 10 - scrollOffset;
 
-        // Filter modules by search text
+        // Render modules
         for (Module m : modules) {
-            if (!searchText.isEmpty() && !m.getName().toLowerCase().contains(searchText.toLowerCase())) {
+
+            // Search filter
+            if (!searchText.isEmpty() &&
+                !m.getName().toLowerCase().contains(searchText.toLowerCase())) {
                 continue;
             }
 
-            // Module box
-            Gui.drawRect(x + 10, offsetY, x + 290, offsetY + moduleHeight, 0xFF1E1E1E);
+            int boxX1 = x + 10;
+            int boxX2 = x + 290;
+            int boxY1 = offsetY;
+            int boxY2 = offsetY + moduleHeight;
 
-            // Highlight on hover
-            if (mouseX >= x + 10 && mouseX <= x + 290 && mouseY >= offsetY && mouseY <= offsetY + moduleHeight) {
-                Gui.drawRect(x + 10, offsetY, x + 290, offsetY + moduleHeight, 0x22FFFFFF);
+            // Module background
+            Gui.drawRect(boxX1, boxY1, boxX2, boxY2, 0xFF1E1E1E);
+
+            // Hover highlight
+            if (mouseX >= boxX1 && mouseX <= boxX2 &&
+                mouseY >= boxY1 && mouseY <= boxY2) {
+                Gui.drawRect(boxX1, boxY1, boxX2, boxY2, 0x22FFFFFF);
             }
 
             // Module name
             mc.fontRendererObj.drawString(
                     m.getName(),
-                    x + 15,
-                    offsetY + 6,
+                    boxX1 + 5,
+                    boxY1 + 6,
                     m.isEnabled() ? 0xFF55AAFF : 0xFFFFFFFF
             );
 
             offsetY += moduleHeight + spacing;
         }
 
-        // Calculate max scroll
+        // Calculate scroll limit
         maxScroll = Math.max(0, (offsetY - y - 200));
     }
 
@@ -85,25 +86,22 @@ public class ModulePanel {
 
         for (Module m : modules) {
 
-            // Skip filtered modules
-            // (SearchBar handles filtering)
-            // If you want filtering here too, add the same check as render()
-
             int boxX1 = x + 10;
             int boxX2 = x + 290;
             int boxY1 = offsetY;
             int boxY2 = offsetY + moduleHeight;
 
-            if (mouseX >= boxX1 && mouseX <= boxX2 && mouseY >= boxY1 && mouseY <= boxY2) {
+            if (mouseX >= boxX1 && mouseX <= boxX2 &&
+                mouseY >= boxY1 && mouseY <= boxY2) {
 
                 if (button == 0) {
-                    // Left click = toggle module
+                    // Left click = toggle
                     m.toggle();
                 }
 
                 if (button == 1) {
-                    // Right click = open settings (later)
-                    // TODO: open module settings panel
+                    // Right click = open settings (future)
+                    // TODO: settings panel
                 }
 
                 return;
@@ -118,7 +116,7 @@ public class ModulePanel {
     }
 
     public void keyTyped(char typedChar, int keyCode) {
-        // Reserved for text boxes inside module settings
+        // Reserved for text input inside module settings
     }
 
     public void handleScroll(int mouseX, int mouseY, int wheel) {
