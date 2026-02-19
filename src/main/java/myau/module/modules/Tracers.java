@@ -31,32 +31,32 @@ import java.util.stream.Collectors;
 public class Tracers extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    // ── Color / visibility properties ─────────────────────────────────────────
+    // Color / visibility
     public final ModeProperty colorMode = new ModeProperty("color", 0,
             new String[]{"DEFAULT", "TEAMS", "HUD", "BEDWARS"});
     public final BooleanProperty drawLines = new BooleanProperty("lines", true);
     public final BooleanProperty drawArrows = new BooleanProperty("arrows", true);
-    public final PercentProperty opacity = new PercentProperty("opacity", 100);
-    public final PercentProperty arrowRadius = new PercentProperty("radius", 50);
-    public final PercentProperty arrowSize = new PercentProperty("arrow size", 100); // NEW: size control
+    public final PercentProperty opacity = new PercentProperty("opacity", 85);
+    public final PercentProperty arrowRadius = new PercentProperty("radius", 45);
+    public final PercentProperty arrowSize = new PercentProperty("arrow size", 100);
 
     public final BooleanProperty showPlayers = new BooleanProperty("players", true);
     public final BooleanProperty showFriends = new BooleanProperty("friends", true);
     public final BooleanProperty showEnemies = new BooleanProperty("enemies", true);
     public final BooleanProperty showBots = new BooleanProperty("bots", false);
 
-    // ── Arrow style (keeping "Slinky" as default but cleaned up) ──────────────
+    // Arrow style
     public final ModeProperty arrowMode = new ModeProperty("arrow", 3,
             new String[]{"Caret", "Greater than", "Triangle", "Slinky"});
 
-    // ── Misc properties ───────────────────────────────────────────────────────
+    // Misc
     public final BooleanProperty showDistance = new BooleanProperty("distance", true);
     public final BooleanProperty hideTeammates = new BooleanProperty("hide teammates", true);
     public final BooleanProperty enemiesOnly = new BooleanProperty("enemies only", false);
     public final BooleanProperty renderOnlyOffScreen = new BooleanProperty("only offscreen", false);
     public final BooleanProperty renderInGUIs = new BooleanProperty("in GUIs", false);
 
-    // ── BedWars team-color mapping ────────────────────────────────────────────
+    // BedWars team colors
     private static final Map<String, Color> BEDWARS_TEAM_COLORS = new HashMap<>();
     static {
         BEDWARS_TEAM_COLORS.put("Red", new Color(255, 50, 50));
@@ -149,23 +149,24 @@ public class Tracers extends Module {
     public void onRender3D(Render3DEvent event) {
         if (!this.isEnabled() || !this.drawLines.getValue()) return;
         RenderUtil.enableRenderState();
+
         Vec3 position;
         if (mc.gameSettings.thirdPersonView == 0) {
             position = new Vec3(0.0, 0.0, 1.0)
-                    .rotatePitch((float)(-Math.toRadians(RenderUtil.lerpFloat(
+                    .rotatePitch((float) (-Math.toRadians(RenderUtil.lerpFloat(
                             mc.getRenderViewEntity().rotationPitch,
                             mc.getRenderViewEntity().prevRotationPitch,
                             ((IAccessorMinecraft) mc).getTimer().renderPartialTicks))))
-                    .rotateYaw((float)(-Math.toRadians(RenderUtil.lerpFloat(
+                    .rotateYaw((float) (-Math.toRadians(RenderUtil.lerpFloat(
                             mc.getRenderViewEntity().rotationYaw,
                             mc.getRenderViewEntity().prevRotationYaw,
                             ((IAccessorMinecraft) mc).getTimer().renderPartialTicks))));
         } else {
             position = new Vec3(0.0, 0.0, 0.0)
-                    .rotatePitch((float)(-Math.toRadians(RenderUtil.lerpFloat(
+                    .rotatePitch((float) (-Math.toRadians(RenderUtil.lerpFloat(
                             mc.thePlayer.cameraPitch, mc.thePlayer.prevCameraPitch,
                             ((IAccessorMinecraft) mc).getTimer().renderPartialTicks))))
-                    .rotateYaw((float)(-Math.toRadians(RenderUtil.lerpFloat(
+                    .rotateYaw((float) (-Math.toRadians(RenderUtil.lerpFloat(
                             mc.thePlayer.cameraYaw, mc.thePlayer.prevCameraYaw,
                             ((IAccessorMinecraft) mc).getTimer().renderPartialTicks))));
         }
@@ -180,7 +181,7 @@ public class Tracers extends Module {
             Color color = getEntityColor(player, (float) opacity.getValue() / 100.0F);
             double x = RenderUtil.lerpDouble(player.posX, player.lastTickPosX, event.getPartialTicks());
             double y = RenderUtil.lerpDouble(player.posY, player.lastTickPosY, event.getPartialTicks())
-                     - (player.isSneaking() ? 0.125 : 0.0);
+                    - (player.isSneaking() ? 0.125 : 0.0);
             double z = RenderUtil.lerpDouble(player.posZ, player.lastTickPosZ, event.getPartialTicks());
             RenderUtil.drawLine3D(position,
                     x, y + player.getEyeHeight(), z,
@@ -190,6 +191,7 @@ public class Tracers extends Module {
                     color.getAlpha() / 255.0F,
                     1.5F);
         }
+
         RenderUtil.disableRenderState();
     }
 
@@ -200,10 +202,10 @@ public class Tracers extends Module {
 
         ScaledResolution sr = new ScaledResolution(mc);
         HUD hud = (HUD) Myau.moduleManager.modules.get(HUD.class);
-        float hudScale = hud.scale.getValue();
+        float hudScale = hud.scale.getValue().floatValue();
 
         GlStateManager.pushMatrix();
-        GlStateManager.scale(hudScale, hudScale, 0.0F);
+        GlStateManager.scale(hudScale, hudScale, 1.0F);
         GlStateManager.translate(sr.getScaledWidth() / 2.0F / hudScale,
                                  sr.getScaledHeight() / 2.0F / hudScale, 0.0F);
 
@@ -223,7 +225,7 @@ public class Tracers extends Module {
             float arrowDirY = (float) (Math.cos(Math.toRadians(yawBetween)) * -1.0F);
 
             float opacityVal = opacity.getValue().floatValue() / 100.0F;
-            float absYaw = Math.abs(MathHelper.wrapAngleTo180_float(yawBetween));
+            float absYaw = Math.abs(MathHelper.wrapAngleTo180_float(yawBetween - mc.thePlayer.rotationYawHead));
 
             if (absYaw < 30.0F) {
                 opacityVal = 0.0F;
@@ -231,15 +233,14 @@ public class Tracers extends Module {
                 opacityVal *= (absYaw - 30.0F) / 30.0F;
             }
 
-            if (opacityVal <= 0.0F) continue;
+            if (opacityVal <= 0.01F) continue;
             if (renderOnlyOffScreen.getValue() && absYaw < 90.0F) continue;
 
-            // Full-opacity color for fill (nametag style)
-            Color fillColor = getEntityColor(player, 1.0F);
+            Color fillColor = getEntityColor(player, 1.0F); // full opacity for nametag-like color
             float red   = fillColor.getRed()   / 255.0f;
             float green = fillColor.getGreen() / 255.0f;
             float blue  = fillColor.getBlue()  / 255.0f;
-            float alpha = opacityVal;  // fade with distance/screen position
+            float alpha = opacityVal;
 
             float percent = arrowRadius.getValue().floatValue();
             float r = 30.0f + (percent / 100.0f) * 170.0f;
@@ -249,38 +250,39 @@ public class Tracers extends Module {
             float sizeScale = arrowSize.getValue().floatValue() / 100.0f;
 
             GlStateManager.pushMatrix();
-            GlStateManager.translate(r * arrowDirX + 1.0F, r * arrowDirY + 1.0F, 0.0F);
+            GlStateManager.translate(r * arrowDirX, r * arrowDirY, 0.0F);
             GlStateManager.rotate(rotation, 0.0F, 0.0F, 1.0F);
             GlStateManager.scale(sizeScale, sizeScale, 1.0F);
 
-            RenderUtil.enableRenderState();
+            if (arrowMode.getValue() == 3) { // Slinky - modern filled pointer
+                final float halfWidth = 16.0F;
+                final float height    = 22.0F;
+                final float midOffset = 6.0F;
 
-            if (arrowMode.getValue() == 3) { // Slinky (clean modern arrow)
-                final float halfWidth = 18.0F;     // base width
-                final float height    = 24.0F;     // length from base to tip
-                final float tipWidth  = 4.0F;      // sharp tip narrowing
-
-                // Main filled body
                 GL11.glEnable(GL11.GL_BLEND);
                 GL11.glDisable(GL11.GL_TEXTURE_2D);
                 GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                GL11.glColor4f(red, green, blue, alpha);
 
+                // Main fill
+                GL11.glColor4f(red, green, blue, alpha);
                 GL11.glBegin(GL11.GL_TRIANGLES);
-                // Left side
-                GL11.glVertex2f(0.0F, -height);                    // tip
-                GL11.glVertex2f(-halfWidth, 0.0F);                 // left base
-                GL11.glVertex2f(-tipWidth, -height + 8.0F);        // left mid
-                // Right side
-                GL11.glVertex2f(0.0F, -height);                    // tip
-                GL11.glVertex2f(tipWidth, -height + 8.0F);         // right mid
-                GL11.glVertex2f(halfWidth, 0.0F);                  // right base
+                GL11.glVertex2f(0.0F, -height);               // tip
+                GL11.glVertex2f(-halfWidth, 0.0F);            // left base
+                GL11.glVertex2f(halfWidth, 0.0F);             // right base
                 GL11.glEnd();
 
-                // Thin dark outline for definition
-                float outlineDarken = 0.35F;
-                GL11.glColor4f(red * outlineDarken, green * outlineDarken, blue * outlineDarken, alpha * 0.9f);
-                GL11.glLineWidth(1.4F);
+                // Subtle inner highlight (optional - comment out if unwanted)
+                GL11.glColor4f(Math.min(1.0f, red + 0.15f), Math.min(1.0f, green + 0.15f), Math.min(1.0f, blue + 0.15f), alpha * 0.6f);
+                GL11.glBegin(GL11.GL_TRIANGLES);
+                GL11.glVertex2f(0.0F, -height + 4.0F);
+                GL11.glVertex2f(-halfWidth + midOffset, midOffset);
+                GL11.glVertex2f(halfWidth - midOffset, midOffset);
+                GL11.glEnd();
+
+                // Outline
+                float darken = 0.40f;
+                GL11.glColor4f(red * darken, green * darken, blue * darken, alpha);
+                GL11.glLineWidth(1.2F);
                 GL11.glBegin(GL11.GL_LINE_LOOP);
                 GL11.glVertex2f(0.0F, -height);
                 GL11.glVertex2f(-halfWidth, 0.0F);
@@ -289,26 +291,22 @@ public class Tracers extends Module {
 
                 GL11.glEnable(GL11.GL_TEXTURE_2D);
                 GL11.glDisable(GL11.GL_BLEND);
-            } else {
-                // ... (keep your original cases for other modes if you want)
-                // or remove them if you only use Slinky now
             }
 
-            RenderUtil.disableRenderState();
-            GlStateManager.popMatrix();
+            GlStateManager.popMatrix(); // Critical: restore after each arrow
 
-            // Distance label
             if (showDistance.getValue()) {
-                String text = (int) mc.thePlayer.getDistanceToEntity(player) + "m";
+                String dist = (int) mc.thePlayer.getDistanceToEntity(player) + "m";
                 GlStateManager.pushMatrix();
-                GlStateManager.translate(r * arrowDirX, r * arrowDirY - 20.0F * sizeScale, 0.0F);
-                GlStateManager.scale(0.8F * sizeScale, 0.8F * sizeScale, 1.0F);
-                mc.fontRendererObj.drawString(text,
-                        -(float) mc.fontRendererObj.getStringWidth(text) / 2,
+                GlStateManager.translate(r * arrowDirX, r * arrowDirY - 18.0F * sizeScale, 0.0F);
+                GlStateManager.scale(0.75F * sizeScale, 0.75F * sizeScale, 1.0F);
+                mc.fontRendererObj.drawString(dist,
+                        -mc.fontRendererObj.getStringWidth(dist) / 2.0F,
                         -4.0F, fillColor.getRGB(), true);
                 GlStateManager.popMatrix();
             }
         }
-        GlStateManager.popMatrix();
+
+        GlStateManager.popMatrix(); // global pop
     }
 }
