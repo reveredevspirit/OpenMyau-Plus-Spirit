@@ -1,16 +1,36 @@
-@Override
-public void onEnabled() {
-    setEnabled(false);
+package myau.module.modules;
 
-    // DO NOT INITIALIZE OLD CLICKGUI ANYMORE
+import myau.module.Module;
+import myau.ui.ClickGui;
+import myau.ui.clickgui.Rise6ClickGui;
+import net.minecraft.client.Minecraft;
+import org.lwjgl.input.Keyboard;
 
-    clickGui = new Rise6ClickGui(
-            ClickGui.combatModules,
-            ClickGui.movementModules,
-            ClickGui.playerModules,
-            ClickGui.renderModules,
-            ClickGui.miscModules
-    );
+public class GuiModule extends Module {
 
-    mc.displayGuiScreen(clickGui);
+    private static final Minecraft mc = Minecraft.getMinecraft();
+    private Rise6ClickGui clickGui;
+
+    public GuiModule() {
+        super("ClickGui", false);
+        setKey(Keyboard.KEY_RSHIFT);
+    }
+
+    @Override
+    public void onEnabled() {
+        // GUI modules disable themselves immediately
+        setEnabled(false);
+
+        // Create Rise6ClickGui instance ONLY
+        clickGui = new Rise6ClickGui(
+                ClickGui.combatModules,
+                ClickGui.movementModules,
+                ClickGui.playerModules,
+                ClickGui.renderModules,
+                ClickGui.miscModules
+        );
+
+        // Open the GUI
+        mc.displayGuiScreen(clickGui);
+    }
 }
