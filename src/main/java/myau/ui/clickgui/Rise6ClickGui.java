@@ -20,11 +20,11 @@ public class Rise6ClickGui extends GuiScreen {
     public Rise6ClickGui() {
 
         // === Create sidebar categories ===
-        categories.add(new SidebarCategory("Combat"));
-        categories.add(new SidebarCategory("Movement"));
-        categories.add(new SidebarCategory("Player"));
-        categories.add(new SidebarCategory("Render"));
-        categories.add(new SidebarCategory("Misc"));
+        categories.add(new SidebarCategory("Combat", combatModules));
+        categories.add(new SidebarCategory("Movement", movementModules));
+        categories.add(new SidebarCategory("Player", playerModules));
+        categories.add(new SidebarCategory("Render", renderModules));
+        categories.add(new SidebarCategory("Misc", miscModules));
 
         // Default selected category
         selectedCategory = categories.get(0);
