@@ -1,4 +1,3 @@
-
 package myau.ui.components;
 
 import myau.Myau;
@@ -11,19 +10,24 @@ import myau.ui.dataset.impl.FloatSlider;
 import myau.ui.dataset.impl.IntSlider;
 import myau.ui.dataset.impl.PercentageSlider;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.client.gui.FontRenderer;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ModuleComponent implements Component {
+
     public Module mod;
     public CategoryComponent category;
     public int offsetY;
     private final ArrayList<Component> settings;
     public boolean panelExpand;
+
+    // Rise‑style animations
+    private float hoverAnim = 0f;
+    private float toggleAnim = 0f;
+    private float expandAnim = 0f;
 
     public ModuleComponent(Module mod, CategoryComponent category, int offsetY) {
         this.mod = mod;
@@ -31,44 +35,39 @@ public class ModuleComponent implements Component {
         this.offsetY = offsetY;
         this.settings = new ArrayList<>();
         this.panelExpand = false;
-        int y = offsetY + 12;
+
+        int y = offsetY + 16;
+
         if (!Myau.propertyManager.properties.get(mod.getClass()).isEmpty()) {
             for (Property<?> baseProperty : Myau.propertyManager.properties.get(mod.getClass())) {
+
                 if (baseProperty instanceof BooleanProperty) {
-                    BooleanProperty property = (BooleanProperty) baseProperty;
-                    CheckBoxComponent c = new CheckBoxComponent(property, this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new CheckBoxComponent((BooleanProperty) baseProperty, this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof FloatProperty) {
-                    FloatProperty property = (FloatProperty) baseProperty;
-                    SliderComponent c = new SliderComponent(new FloatSlider(property), this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new SliderComponent(new FloatSlider((FloatProperty) baseProperty), this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof IntProperty) {
-                    IntProperty property = (IntProperty) baseProperty;
-                    SliderComponent c = new SliderComponent(new IntSlider(property), this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new SliderComponent(new IntSlider((IntProperty) baseProperty), this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof PercentProperty) {
-                    PercentProperty property = (PercentProperty) baseProperty;
-                    SliderComponent c = new SliderComponent(new PercentageSlider(property), this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new SliderComponent(new PercentageSlider((PercentProperty) baseProperty), this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof ModeProperty) {
-                    ModeProperty property = (ModeProperty) baseProperty;
-                    ModeComponent c = new ModeComponent(property, this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new ModeComponent((ModeProperty) baseProperty, this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof ColorProperty) {
-                    ColorProperty property = (ColorProperty) baseProperty;
-                    ColorSliderComponent c = new ColorSliderComponent(property, this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new ColorSliderComponent((ColorProperty) baseProperty, this, y));
+                    y += 14;
+
                 } else if (baseProperty instanceof TextProperty) {
-                    TextProperty property = (TextProperty) baseProperty;
-                    TextComponent c = new TextComponent(property, this, y);
-                    this.settings.add(c);
-                    y += c.getHeight();
+                    settings.add(new TextComponent((TextProperty) baseProperty, this, y));
+                    y += 14;
                 }
             }
         }
@@ -78,7 +77,7 @@ public class ModuleComponent implements Component {
 
     public void setComponentStartAt(int newOffsetY) {
         this.offsetY = newOffsetY;
-        int y = this.offsetY + 16;
+        int y = this.offsetY + 18;
 
         for (Component c : this.settings) {
             c.setComponentStartAt(y);
@@ -89,31 +88,64 @@ public class ModuleComponent implements Component {
     }
 
     public void draw(AtomicInteger offset) {
-        int textColor;
-        if (this.mod.isEnabled()) {
-            textColor = ((HUD) Myau.moduleManager.modules.get(HUD.class)).getColor(System.currentTimeMillis(), offset.get()).getRGB();
-        } else {
-            textColor = new Color(102, 102, 102).getRGB();
-        }
-        Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(this.mod.getName(), (float) (this.category.getX() + this.category.getWidth() / 2 - Minecraft.getMinecraft().fontRendererObj.getStringWidth(this.mod.getName()) / 2), (float) (this.category.getY() + this.offsetY + 4), textColor);
-        if (this.panelExpand && !this.settings.isEmpty()) {
-            for (Component c : this.settings) {
+        FontRenderer fr = Minecraft.getMinecraft().fontRendererObj;
+
+        // Hover animation
+        boolean hovered = isHovered(Minecraft.getMinecraft().mouseHelper.deltaX, Minecraft.getMinecraft().mouseHelper.deltaY);
+        hoverAnim += ((hovered ? 1f : 0f) - hoverAnim) * 0.2f;
+
+        // Toggle animation
+        toggleAnim += ((mod.isEnabled() ? 1f : 0f) - toggleAnim) * 0.2f;
+
+        // Expand animation
+        expandAnim += ((panelExpand ? 1f : 0f) - expandAnim) * 0.2f;
+
+        int baseX = category.getX();
+        int baseY = category.getY() + offsetY;
+
+        // === Rise‑style module background ===
+        Color bg = new Color(245, 245, 245, (int) (230 + hoverAnim * 25));
+        GuiUtils.drawRoundedRect(baseX + 4, baseY, category.getWidth() - 8, 16, 6, bg);
+
+        // === Module name ===
+        fr.drawString(mod.getName(), baseX + 10, baseY + 4, new Color(40, 40, 40).getRGB());
+
+        // === Toggle switch ===
+        int toggleX = baseX + category.getWidth() - 22;
+        int toggleY = baseY + 4;
+
+        // Background of toggle
+        GuiUtils.drawRoundedRect(toggleX, toggleY, 14, 8, 4,
+                new Color(200, 200, 200, 180));
+
+        // Knob
+        GuiUtils.drawRoundedRect(
+                (int) (toggleX + toggleAnim * 6),
+                toggleY,
+                8, 8, 4,
+                toggleAnim > 0.5 ? new Color(60, 162, 253) : new Color(180, 180, 180)
+        );
+
+        // === Expand arrow ===
+        fr.drawString(panelExpand ? "-" : "+", baseX + category.getWidth() - 10, baseY + 4, new Color(60, 60, 60).getRGB());
+
+        // === Draw settings ===
+        if (expandAnim > 0.01 && !settings.isEmpty()) {
+            for (Component c : settings) {
                 if (c.isVisible()) {
                     c.draw(offset);
                     offset.incrementAndGet();
                 }
             }
         }
-
-
     }
 
     public int getHeight() {
-        if (!this.panelExpand) {
-            return 16;
+        if (!panelExpand && expandAnim < 0.01) {
+            return 18;
         } else {
-            int h = 16;
-            for (Component c : this.settings) {
+            int h = 18;
+            for (Component c : settings) {
                 if (c.isVisible()) {
                     h += c.getHeight();
                 }
@@ -123,59 +155,56 @@ public class ModuleComponent implements Component {
     }
 
     public void update(int mousePosX, int mousePosY) {
-        if(!panelExpand) return;
-        if (!this.settings.isEmpty()) {
-            for (Component c : this.settings) {
-                if (c.isVisible()) {
-                    c.update(mousePosX, mousePosY);
-                }
+        if (!panelExpand) return;
+        for (Component c : settings) {
+            if (c.isVisible()) {
+                c.update(mousePosX, mousePosY);
             }
         }
-
     }
 
     public void mouseDown(int x, int y, int button) {
-        if (this.isHovered(x, y) && button == 0) {
-            this.mod.toggle();
+        if (isHovered(x, y) && button == 0) {
+            mod.toggle();
         }
 
-        if (this.isHovered(x, y) && button == 1) {
-            this.panelExpand = !this.panelExpand;
+        if (isHovered(x, y) && button == 1) {
+            panelExpand = !panelExpand;
         }
 
-        if(!panelExpand) return;
-        for (Component c : this.settings) {
+        if (!panelExpand) return;
+
+        for (Component c : settings) {
             if (c.isVisible()) {
                 c.mouseDown(x, y, button);
             }
         }
-
     }
 
     public void mouseReleased(int x, int y, int button) {
-        if(!panelExpand) return;
-        for (Component c : this.settings) {
+        if (!panelExpand) return;
+        for (Component c : settings) {
             if (c.isVisible()) {
                 c.mouseReleased(x, y, button);
             }
         }
-
     }
 
     public void keyTyped(char chatTyped, int keyCode) {
-        if(!panelExpand) return;
-        for (Component c : this.settings) {
+        if (!panelExpand) return;
+        for (Component c : settings) {
             if (c.isVisible()) {
                 c.keyTyped(chatTyped, keyCode);
             }
         }
-
     }
 
     public boolean isHovered(int x, int y) {
-        return x > this.category.getX() && x < this.category.getX() + this.category.getWidth() && y > this.category.getY() + this.offsetY && y < this.category.getY() + 16 + this.offsetY;
+        return x > category.getX() + 4 &&
+               x < category.getX() + category.getWidth() - 4 &&
+               y > category.getY() + offsetY &&
+               y < category.getY() + offsetY + 16;
     }
-
 
     @Override
     public boolean isVisible() {
