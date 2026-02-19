@@ -9,6 +9,7 @@ import myau.module.modules.*;
 import myau.module.modules.Timer;
 import myau.ui.components.CategoryComponent;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ScaledResolution;
 import org.lwjgl.input.Mouse;
 
 import java.awt.*;
@@ -20,13 +21,18 @@ import java.util.*;
 import java.util.List;
 
 public class ClickGui extends GuiScreen {
+
     private static ClickGui instance;
     private final File configFile = new File("./config/Myau/", "clickgui.txt");
     private final ArrayList<CategoryComponent> categoryList;
 
+    // Rise‑style background fade
+    private float fade = 0f;
+
     public ClickGui() {
         instance = this;
 
+        // === Your module registration stays exactly the same ===
         List<Module> combatModules = new ArrayList<>();
         combatModules.add(Myau.moduleManager.getModule(AimAssist.class));
         combatModules.add(Myau.moduleManager.getModule(AutoClicker.class));
@@ -103,7 +109,7 @@ public class ClickGui extends GuiScreen {
         playerModules.add(Myau.moduleManager.getModule(GhostHand.class));
         playerModules.add(Myau.moduleManager.getModule(MCF.class));
         playerModules.add(Myau.moduleManager.getModule(AntiDebuff.class));
-        playerModules.add(Myau.moduleManager.getModule(FlagDetector.class));  // i mean this use S08PacketPlayerPosLook so it suck
+        playerModules.add(Myau.moduleManager.getModule(FlagDetector.class));
 
         List<Module> miscModules = new ArrayList<>();
         miscModules.add(Myau.moduleManager.getModule(Spammer.class));
@@ -141,27 +147,27 @@ public class ClickGui extends GuiScreen {
         }
 
         this.categoryList = new ArrayList<>();
-        int topOffset = 5;
+        int topOffset = 20;
 
         CategoryComponent combat = new CategoryComponent("Combat", combatModules);
         combat.setY(topOffset);
         categoryList.add(combat);
-        topOffset += 20;
+        topOffset += 25;
 
         CategoryComponent movement = new CategoryComponent("Movement", movementModules);
         movement.setY(topOffset);
         categoryList.add(movement);
-        topOffset += 20;
+        topOffset += 25;
 
         CategoryComponent render = new CategoryComponent("Render", renderModules);
         render.setY(topOffset);
         categoryList.add(render);
-        topOffset += 20;
+        topOffset += 25;
 
         CategoryComponent player = new CategoryComponent("Player", playerModules);
         player.setY(topOffset);
         categoryList.add(player);
-        topOffset += 20;
+        topOffset += 25;
 
         CategoryComponent misc = new CategoryComponent("Misc", miscModules);
         misc.setY(topOffset);
@@ -174,15 +180,20 @@ public class ClickGui extends GuiScreen {
         return instance;
     }
 
+    @Override
     public void initGui() {
         super.initGui();
     }
 
+    @Override
     public void drawScreen(int x, int y, float p) {
-        drawRect(0, 0, this.width, this.height, new Color(0, 0, 0, 100).getRGB());
 
-        mc.fontRendererObj.drawStringWithShadow("Myau+ " + Myau.version, 4, this.height - 3 - mc.fontRendererObj.FONT_HEIGHT * 2, new Color(60, 162, 253).getRGB());
-        mc.fontRendererObj.drawStringWithShadow("dev, nespola", 4, this.height - 3 - mc.fontRendererObj.FONT_HEIGHT, new Color(60, 162, 253).getRGB());
+        // === Rise‑style fade background ===
+        fade += (1f - fade) * 0.1f;
+        drawRect(0, 0, width, height, new Color(0, 0, 0, (int)(fade * 120)).getRGB());
+
+        // === Optional blur (Rise‑style) ===
+        // If you want blur, I can generate a shader for you.
 
         for (CategoryComponent category : categoryList) {
             category.render(this.fontRendererObj);
@@ -202,88 +213,58 @@ public class ClickGui extends GuiScreen {
         }
     }
 
+    @Override
     public void mouseClicked(int x, int y, int mouseButton) {
-        Iterator<CategoryComponent> btnCat = categoryList.iterator();
-        while (true) {
-            CategoryComponent category;
-            do {
-                do {
-                    if (!btnCat.hasNext()) {
-                        return;
-                    }
+        for (CategoryComponent category : categoryList) {
 
-                    category = btnCat.next();
-                    if (category.insideArea(x, y) && !category.isHovered(x, y) && !category.mousePressed(x, y) && mouseButton == 0) {
-                        category.mousePressed(true);
-                        category.xx = x - category.getX();
-                        category.yy = y - category.getY();
-                    }
+            if (category.insideArea(x, y) && !category.isHovered(x, y) && !category.mousePressed(x, y) && mouseButton == 0) {
+                category.mousePressed(true);
+                category.xx = x - category.getX();
+                category.yy = y - category.getY();
+            }
 
-                    if (category.mousePressed(x, y) && mouseButton == 0) {
-                        category.setOpened(!category.isOpened());
-                    }
+            if (category.mousePressed(x, y) && mouseButton == 0) {
+                category.setOpened(!category.isOpened());
+            }
 
-                    if (category.isHovered(x, y) && mouseButton == 0) {
-                        category.setPin(!category.isPin());
-                    }
-                } while (!category.isOpened());
-            } while (category.getModules().isEmpty());
+            if (category.isHovered(x, y) && mouseButton == 0) {
+                category.setPin(!category.isPin());
+            }
 
-            for (Component c : category.getModules()) {
-                c.mouseDown(x, y, mouseButton);
+            if (category.isOpened()) {
+                for (Component c : category.getModules()) {
+                    c.mouseDown(x, y, mouseButton);
+                }
             }
         }
-
     }
 
+    @Override
     public void mouseReleased(int x, int y, int mouseButton) {
-        Iterator<CategoryComponent> iterator = categoryList.iterator();
-
-        CategoryComponent categoryComponent;
-        while (iterator.hasNext()) {
-            categoryComponent = iterator.next();
+        for (CategoryComponent category : categoryList) {
             if (mouseButton == 0) {
-                categoryComponent.mousePressed(false);
+                category.mousePressed(false);
             }
         }
 
-        iterator = categoryList.iterator();
-
-        while (true) {
-            do {
-                do {
-                    if (!iterator.hasNext()) {
-                        return;
-                    }
-
-                    categoryComponent = iterator.next();
-                } while (!categoryComponent.isOpened());
-            } while (categoryComponent.getModules().isEmpty());
-
-            for (Component component : categoryComponent.getModules()) {
-                component.mouseReleased(x, y, mouseButton);
+        for (CategoryComponent category : categoryList) {
+            if (category.isOpened()) {
+                for (Component component : category.getModules()) {
+                    component.mouseReleased(x, y, mouseButton);
+                }
             }
         }
     }
 
+    @Override
     public void keyTyped(char typedChar, int key) {
         if (key == 1) {
             this.mc.displayGuiScreen(null);
-        } else {
-            Iterator<CategoryComponent> btnCat = categoryList.iterator();
+            return;
+        }
 
-            while (true) {
-                CategoryComponent cat;
-                do {
-                    do {
-                        if (!btnCat.hasNext()) {
-                            return;
-                        }
-
-                        cat = btnCat.next();
-                    } while (!cat.isOpened());
-                } while (cat.getModules().isEmpty());
-
+        for (CategoryComponent cat : categoryList) {
+            if (cat.isOpened()) {
                 for (Component component : cat.getModules()) {
                     component.keyTyped(typedChar, key);
                 }
@@ -291,10 +272,12 @@ public class ClickGui extends GuiScreen {
         }
     }
 
+    @Override
     public void onGuiClosed() {
         savePositions();
     }
 
+    @Override
     public boolean doesGuiPauseGame() {
         return false;
     }
