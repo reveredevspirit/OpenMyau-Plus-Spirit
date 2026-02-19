@@ -67,6 +67,13 @@ public class Rise6ClickGui extends GuiScreen {
         super.initGui();
     }
 
+    // Helper to calculate all heights in one place so they're consistent
+    private int getCategoryHeight()  { return categories.size() * 24 + 28; }
+    private int getConfigBtnY()      { return posY + getCategoryHeight() + 8; }
+    private int getConfigPanelH()    { return showConfigs ? configPanel.getContentHeight() : 0; }
+    private int getSidebarHeight()   { return getCategoryHeight() + 8 + 16 + getConfigPanelH() + 8; }
+    private int getPanelHeight()     { return Math.max(modulePanel.getContentHeight() + 50, getSidebarHeight()); }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
 
@@ -78,34 +85,30 @@ public class Rise6ClickGui extends GuiScreen {
         // Dark screen overlay
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
 
-        // ----------------------------------------------------------------
-        // CALCULATE HEIGHTS
-        // ----------------------------------------------------------------
-        int categoryHeight  = categories.size() * 24 + 28;
-        int configBtnY      = posY + categoryHeight + 8;
-        int configPanelH    = showConfigs ? configPanel.getContentHeight() : 0;
-        int sidebarHeight   = categoryHeight + 8 + 16 + configPanelH + 8;
-        int panelHeight     = Math.max(modulePanel.getContentHeight() + 50, sidebarHeight);
+        // Calculate height ONCE before drawing anything
+        int panelHeight = getPanelHeight();
 
         // ----------------------------------------------------------------
-        // OUTER BACKGROUND — one big rounded rect
+        // OUTER BACKGROUND
         // ----------------------------------------------------------------
         RoundedUtils.drawRoundedRect(posX, posY, TOTAL_WIDTH, panelHeight, 10, 0xF0080808);
 
         // ----------------------------------------------------------------
-        // SIDEBAR
+        // SIDEBAR BACKGROUND
         // ----------------------------------------------------------------
         RoundedUtils.drawRoundedRect(posX, posY, SIDEBAR_WIDTH, panelHeight, 10, 0xF0111111);
 
-        // Thin divider between sidebar and panel
+        // Divider — clamped to panelHeight so it never overflows
         drawRect(posX + SIDEBAR_WIDTH, posY + 5,
-                 posX + SIDEBAR_WIDTH + 1, posY + panelHeight - 5, 0xFF222222);
+                 posX + SIDEBAR_WIDTH + 1, posY + panelHeight - 5, 0xFF333333);
 
         // Title
         GL11.glColor4f(1f, 1f, 1f, 1f);
         mc.fontRendererObj.drawString("§b§lMyau", posX + 10, posY + 8, 0xFFFFFFFF);
 
-        // Categories
+        // ----------------------------------------------------------------
+        // CATEGORIES
+        // ----------------------------------------------------------------
         int yOffset = posY + 28;
         for (SidebarCategory cat : categories) {
             boolean selected = selectedCategory == cat;
@@ -114,7 +117,8 @@ public class Rise6ClickGui extends GuiScreen {
 
             if (selected) {
                 RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A3A5C);
-                RoundedUtils.drawRoundedRect(posX + 4, yOffset, 3, 14, 1, 0xFF55AAFF);
+                // Use plain rect for accent bar to avoid corner bleed onto adjacent rows
+                drawRect(posX + 4, yOffset, posX + 7, yOffset + 14, 0xFF55AAFF);
             } else if (hovered) {
                 RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A1A1A);
             }
@@ -129,6 +133,7 @@ public class Rise6ClickGui extends GuiScreen {
         // ----------------------------------------------------------------
         // CONFIGS BUTTON
         // ----------------------------------------------------------------
+        int configBtnY = getConfigBtnY();
         boolean configHovered = mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
                                 mouseY >= configBtnY && mouseY <= configBtnY + 16;
 
@@ -136,7 +141,7 @@ public class Rise6ClickGui extends GuiScreen {
                 showConfigs ? 0xFF1A3A5C : (configHovered ? 0xFF1A1A1A : 0xFF161616));
 
         if (showConfigs) {
-            RoundedUtils.drawRoundedRect(posX + 4, configBtnY + 1, 3, 12, 1, 0xFF55AAFF);
+            drawRect(posX + 4, configBtnY + 2, posX + 7, configBtnY + 14, 0xFF55AAFF);
         }
 
         GL11.glColor4f(1f, 1f, 1f, 1f);
@@ -145,23 +150,19 @@ public class Rise6ClickGui extends GuiScreen {
                 posX + 14, configBtnY + 4,
                 showConfigs ? 0xFF55AAFF : (configHovered ? 0xFFCCCCCC : 0xFF888888));
 
-        // Config panel (expanded)
         if (showConfigs) {
             configPanel.render(posX + 6, configBtnY + 20, mouseX, mouseY);
         }
 
         // ----------------------------------------------------------------
-        // MAIN PANEL — search + modules
+        // MAIN PANEL
         // ----------------------------------------------------------------
         int panelX = posX + SIDEBAR_WIDTH + 8;
 
-        // Search bar
         searchBar.render(panelX, posY + 10, mouseX, mouseY);
 
-        // Divider under search
         drawRect(panelX, posY + 30, posX + TOTAL_WIDTH - 8, posY + 31, 0xFF222222);
 
-        // Module list
         modulePanel.render(panelX, posY + 38, mouseX, mouseY, searchBar.getText());
 
         super.drawScreen(mouseX, mouseY, partialTicks);
@@ -178,11 +179,16 @@ public class Rise6ClickGui extends GuiScreen {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int button) throws IOException {
 
-        // Drag — top bar of whole GUI
+        // If config context menu is open, let it handle click first
+        if (configPanel.isContextMenuOpen()) {
+            configPanel.mouseClicked(posX + 6, getConfigBtnY() + 20, mouseX, mouseY, button);
+            return;
+        }
+
+        // Drag bar
         if (button == 0 &&
             mouseX >= posX && mouseX <= posX + TOTAL_WIDTH &&
             mouseY >= posY && mouseY <= posY + DRAG_BAR_HEIGHT) {
-
             dragging = true;
             dragOffsetX = mouseX - posX;
             dragOffsetY = mouseY - posY;
@@ -201,10 +207,8 @@ public class Rise6ClickGui extends GuiScreen {
             yOffset += 24;
         }
 
-        // Configs button click
-        int categoryHeight = categories.size() * 24 + 28;
-        int configBtnY     = posY + categoryHeight + 8;
-
+        // Configs button
+        int configBtnY = getConfigBtnY();
         if (button == 0 &&
             mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
             mouseY >= configBtnY && mouseY <= configBtnY + 16) {
@@ -215,53 +219,4 @@ public class Rise6ClickGui extends GuiScreen {
 
         // Config panel clicks
         if (showConfigs) {
-            configPanel.mouseClicked(posX + 6, configBtnY + 20, mouseX, mouseY, button);
-        }
-
-        // Search + module panel clicks
-        int panelX = posX + SIDEBAR_WIDTH + 8;
-        searchBar.mouseClicked(mouseX, mouseY, button);
-        modulePanel.mouseClicked(panelX, posY + 38, mouseX, mouseY, button);
-    }
-
-    @Override
-    public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
-        if (dragging) {
-            ScaledResolution sr = new ScaledResolution(mc);
-            posX = Math.max(0, Math.min(sr.getScaledWidth()  - TOTAL_WIDTH, mouseX - dragOffsetX));
-            posY = Math.max(0, Math.min(sr.getScaledHeight() - 100,         mouseY - dragOffsetY));
-        } else {
-            modulePanel.mouseClickMove(mouseX);
-        }
-    }
-
-    @Override
-    protected void mouseReleased(int mouseX, int mouseY, int state) {
-        dragging = false;
-        modulePanel.mouseReleased();
-    }
-
-    @Override
-    public void handleMouseInput() throws IOException {
-        super.handleMouseInput();
-        int delta = org.lwjgl.input.Mouse.getEventDWheel();
-        if (delta != 0) {
-            modulePanel.handleScroll(delta);
-        }
-    }
-
-    @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (keyCode == 1) {
-            mc.displayGuiScreen(null);
-            return;
-        }
-        if (searchBar.keyTyped(typedChar, keyCode)) return;
-        modulePanel.keyTyped(typedChar, keyCode);
-    }
-
-    @Override
-    public boolean doesGuiPauseGame() {
-        return false;
-    }
-}
+            configPan
