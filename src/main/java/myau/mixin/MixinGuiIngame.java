@@ -13,30 +13,27 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @SideOnly(Side.CLIENT)
-@Mixin(value = GuiIngame.class, priority = 9999)
+@Mixin(value = {GuiIngame.class}, priority = 9999)
 public abstract class MixinGuiIngame {
 
     @Redirect(
-            method = "updateTick",
+            method = {"updateTick"},
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/entity/player/InventoryPlayer;getCurrentItem()Lnet/minecraft/item/ItemStack;"
             )
     )
-    private ItemStack redirectGetCurrentItem(InventoryPlayer inventoryPlayer) {
-
-        // Scaffold spoof
+    private ItemStack updateTick(InventoryPlayer inventoryPlayer) {
         Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
+        if (scaffold != null && scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
             int slot = scaffold.getSlot();
             if (slot >= 0) {
                 return inventoryPlayer.getStackInSlot(slot);
             }
         }
 
-        // AutoBlockIn spoof
         AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
-        if (autoBlockIn.isEnabled() && autoBlockIn.itemSpoof.getValue()) {
+        if (autoBlockIn != null && autoBlockIn.isEnabled() && autoBlockIn.itemSpoof.getValue()) {
             int slot = autoBlockIn.getSlot();
             if (slot >= 0) {
                 return inventoryPlayer.getStackInSlot(slot);
