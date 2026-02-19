@@ -36,7 +36,7 @@ public class Rise6ClickGui extends GuiScreen {
         selectedCategory = categories.get(0);
 
         searchBar = new SearchBar();
-        modulePanel = new ModulePanel(selectedCategory);
+         = new (selectedCategory);
     }
 
     // ------------------------------------------------------------
@@ -120,7 +120,7 @@ public class Rise6ClickGui extends GuiScreen {
         }
 
         searchBar.mouseClicked(mouseX, mouseY, button);
-        modulePanel.mouseClicked(mouseX, mouseY, button);
+        modulePanel.mouseClicked(guiX, 60, mouseX, mouseY, button);
     }
 
     @Override
