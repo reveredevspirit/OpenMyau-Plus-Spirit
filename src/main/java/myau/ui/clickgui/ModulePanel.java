@@ -6,6 +6,7 @@ import myau.module.Setting;
 import myau.module.SliderSetting;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,24 +55,24 @@ public class ModulePanel {
                     mouseY >= offsetY && mouseY <= offsetY + height;
 
             // Module row background
-            // Module row background
             int rowColor;
             if (module.isEnabled()) {
-            rowColor = 0xFF0D2137; // dark blue when enabled
-        } else if (hovered) {
-            rowColor = 0xFF2A2A2A;
-        } else {
-            rowColor = 0xFF1A1A1A;
-    }
+                rowColor = 0xFF0D2137;
+            } else if (hovered) {
+                rowColor = 0xFF2A2A2A;
+            } else {
+                rowColor = 0xFF1A1A1A;
+            }
             RoundedUtils.drawRoundedRect(x, offsetY, width, height, 4, rowColor);
 
             // Blue left accent bar when enabled
             if (module.isEnabled()) {
-            RoundedUtils.drawRoundedRect(x, offsetY, 3, height, 2, 0xFF55AAFF);
-    }
+                RoundedUtils.drawRoundedRect(x, offsetY, 3, height, 2, 0xFF55AAFF);
+            }
 
             // Module name
             int nameColor = module.isEnabled() ? 0xFF55AAFF : (hovered ? 0xFFCCCCCC : 0xFFFFFFFF);
+            GL11.glColor4f(1f, 1f, 1f, 1f);
             mc.fontRendererObj.drawString(module.getName(), x + 7, offsetY + 5, nameColor);
 
             // Toggle animation
@@ -89,6 +90,7 @@ public class ModulePanel {
             // Expand arrow
             if (!module.getSettings().isEmpty()) {
                 String arrow = expandedModule == module ? "v" : ">";
+                GL11.glColor4f(1f, 1f, 1f, 1f);
                 mc.fontRendererObj.drawString(arrow, x + width - 38, offsetY + 5, 0xFF888888);
             }
 
@@ -106,20 +108,22 @@ public class ModulePanel {
                         int rowH = 28;
                         RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
 
-                        // Setting name
+                        // Draw text FIRST
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
-                        // Value
                         String valStr = formatDouble(slider.getValue());
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(valStr,
                                 x + width - mc.fontRendererObj.getStringWidth(valStr) - 8,
                                 offsetY + 4, 0xFF55AAFF);
 
-                        // Grey track
+                        // Draw slider bar AFTER text
                         int barX = x + 10;
                         int barY = offsetY + 17;
                         int barW = width - 20;
 
+                        // Grey track
                         RoundedUtils.drawRoundedRect(barX, barY, barW, 4, 2, 0xFF444444);
 
                         // Blue fill
@@ -142,12 +146,14 @@ public class ModulePanel {
                         int rowH = 16;
                         RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
 
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
                         boolean isListening = listeningKeybind == kb;
                         String keyLabel = isListening ? "[ ... ]" : "[ " + kb.getDisplayName() + " ]";
                         int keyColor = isListening ? 0xFFFFAA00 : 0xFF55AAFF;
                         int labelW = mc.fontRendererObj.getStringWidth(keyLabel);
+                        GL11.glColor4f(1f, 1f, 1f, 1f);
                         mc.fontRendererObj.drawString(keyLabel, x + width - labelW - 8, offsetY + 4, keyColor);
 
                         offsetY += rowH + 1;
@@ -257,7 +263,7 @@ public class ModulePanel {
     }
 
     // ----------------------------------------------------------------
-    // CONTENT HEIGHT (for dynamic background sizing)
+    // CONTENT HEIGHT
     // ----------------------------------------------------------------
     public int getContentHeight() {
         int h = 0;
@@ -265,8 +271,8 @@ public class ModulePanel {
             h += 17;
             if (expandedModule == module) {
                 for (Setting setting : module.getSettings()) {
-                    if (setting instanceof SliderSetting)        h += 30;
-                    else if (setting instanceof KeybindSetting)  h += 17;
+                    if (setting instanceof SliderSetting)       h += 30;
+                    else if (setting instanceof KeybindSetting) h += 17;
                 }
                 h += 2;
             }
