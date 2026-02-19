@@ -2,6 +2,7 @@ package myau.ui.components;
 
 import myau.module.Module;
 import myau.ui.Component;
+import myau.ui.utils.GuiUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
