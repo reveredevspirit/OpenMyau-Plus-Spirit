@@ -117,9 +117,8 @@ public class ModulePanel {
 
     public void mouseClicked(int panelX, int panelY, int mouseX, int mouseY, int button) {
 
-        // These should match the values passed from Rise6ClickGui.render(...)
-        int x = Rise6ClickGui.LAST_GUI_X; // or pass x into this method instead
-        int y = 60;
+        int x = panelX;
+        int y = panelY;
 
         int offsetY = y;
 
