@@ -29,10 +29,13 @@ public class Rise6ClickGui extends GuiScreen {
     private int posX;
     private int posY;
 
-    private static final int SIDEBAR_WIDTH   = 115;
-    private static final int PANEL_WIDTH     = 300;
+    private static final int SIDEBAR_WIDTH   = 120;
+    private static final int PANEL_WIDTH     = 220;
     private static final int DRAG_BAR_HEIGHT = 16;
-    private static final int GAP             = 5; // gap between sidebar and main panel
+    private static final int GAP             = 0; // no gap, they're joined
+
+    // Total combined width
+    private static final int TOTAL_WIDTH = SIDEBAR_WIDTH + PANEL_WIDTH;
 
     public Rise6ClickGui(
             List<Module> combatModules,
@@ -68,43 +71,68 @@ public class Rise6ClickGui extends GuiScreen {
         ScaledResolution sr = new ScaledResolution(mc);
 
         openAnim += (1f - openAnim) * 0.15f;
-        int guiAlpha = (int)(180 * openAnim);
+        int guiAlpha = (int)(150 * openAnim);
 
-        // Dark screen overlay
+        // Subtle dark overlay
         drawRect(0, 0, sr.getScaledWidth(), sr.getScaledHeight(), (guiAlpha << 24));
 
-        // ----------------------------------------------------------------
-        // SIDEBAR — moves with posX/posY
-        // ----------------------------------------------------------------
-        int sidebarX = posX - SIDEBAR_WIDTH - GAP - 10;
-        int sidebarY = posY;
-        int sidebarHeight = categories.size() * 28 + 20;
+        int panelHeight = Math.max(modulePanel.getContentHeight() + 60, categories.size() * 28 + 20);
 
-        // Sidebar background
-        RoundedUtils.drawRoundedRect(sidebarX, sidebarY, SIDEBAR_WIDTH, sidebarHeight, 8, 0xDD0A0A0A);
+        // ----------------------------------------------------------------
+        // OUTER BACKGROUND — one big rounded rect for the whole GUI
+        // ----------------------------------------------------------------
+        RoundedUtils.drawRoundedRect(posX, posY, TOTAL_WIDTH, panelHeight, 10, 0xF0080808);
 
-        // Sidebar category labels
-        int yOffset = sidebarY + 10;
+        // ----------------------------------------------------------------
+        // SIDEBAR — dark section on the left
+        // ----------------------------------------------------------------
+        // Slightly lighter shade to distinguish sidebar from module panel
+        RoundedUtils.drawRoundedRect(posX, posY, SIDEBAR_WIDTH, panelHeight, 10, 0xF0111111);
+
+        // Title at top of sidebar
+        mc.fontRendererObj.drawString("§b§lMyau", posX + 10, posY + 8, 0xFFFFFFFF);
+
+        // Divider line between sidebar and panel
+        drawRect(posX + SIDEBAR_WIDTH, posY + 5, posX + SIDEBAR_WIDTH + 1, posY + panelHeight - 5, 0xFF222222);
+
+        // Category entries
+        int yOffset = posY + 28;
         for (SidebarCategory cat : categories) {
-            cat.render(sidebarX + 5, yOffset, mouseX, mouseY, selectedCategory == cat);
-            yOffset += 28;
+            boolean selected = selectedCategory == cat;
+
+            // Blue highlight for selected category
+            if (selected) {
+                RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A3A5C);
+                // Blue left accent bar
+                RoundedUtils.drawRoundedRect(posX + 4, yOffset, 3, 14, 1, 0xFF55AAFF);
+            }
+
+            // Hover highlight
+            boolean hovered = mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
+                               mouseY >= yOffset - 2 && mouseY <= yOffset + 18;
+            if (hovered && !selected) {
+                RoundedUtils.drawRoundedRect(posX + 6, yOffset - 2, SIDEBAR_WIDTH - 12, 20, 4, 0xFF1A1A1A);
+            }
+
+            int textColor = selected ? 0xFF55AAFF : (hovered ? 0xFFCCCCCC : 0xFF888888);
+            mc.fontRendererObj.drawString(cat.getName(), posX + 14, yOffset + 3, textColor);
+
+            yOffset += 24;
         }
 
         // ----------------------------------------------------------------
-        // MAIN PANEL — dynamic height
+        // MAIN PANEL — search + modules
         // ----------------------------------------------------------------
-        int panelHeight = modulePanel.getContentHeight() + 60;
-        RoundedUtils.drawRoundedRect(posX - 10, posY, PANEL_WIDTH, panelHeight, 8, 0xDD0A0A0A);
-
-        // Drag handle bar
-        RoundedUtils.drawRoundedRect(posX - 10, posY, PANEL_WIDTH, DRAG_BAR_HEIGHT, 8, 0xDD1A1A1A);
-        mc.fontRendererObj.drawString("§7✦ Myau", posX, posY + 4, 0xFFAAAAAA);
+        int panelX = posX + SIDEBAR_WIDTH + 8;
 
         // Search bar
-        searchBar.render(posX, posY + 20, mouseX, mouseY);
+        searchBar.render(panelX, posY + 10, mouseX, mouseY);
+
+        // Divider under search
+        drawRect(panelX, posY + 30, posX + TOTAL_WIDTH - 8, posY + 31, 0xFF222222);
 
         // Module list
-        modulePanel.render(posX, posY + 50, mouseX, mouseY, searchBar.getText());
+        modulePanel.render(panelX, posY + 38, mouseX, mouseY, searchBar.getText());
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -120,9 +148,9 @@ public class Rise6ClickGui extends GuiScreen {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int button) throws IOException {
 
-        // Drag bar
+        // Drag — clicking anywhere on the top bar of the whole GUI
         if (button == 0 &&
-            mouseX >= posX - 10 && mouseX <= posX - 10 + PANEL_WIDTH &&
+            mouseX >= posX && mouseX <= posX + TOTAL_WIDTH &&
             mouseY >= posY && mouseY <= posY + DRAG_BAR_HEIGHT) {
 
             dragging = true;
@@ -131,31 +159,29 @@ public class Rise6ClickGui extends GuiScreen {
             return;
         }
 
-        // Sidebar clicks — now relative to sidebarX
-        int sidebarX = posX - SIDEBAR_WIDTH - GAP - 10;
-        int yOffset = posY + 10;
+        // Sidebar category clicks
+        int yOffset = posY + 28;
         for (SidebarCategory cat : categories) {
-            if (mouseX >= sidebarX && mouseX <= sidebarX + SIDEBAR_WIDTH &&
-                mouseY >= yOffset && mouseY <= yOffset + 22) {
+            if (mouseX >= posX + 6 && mouseX <= posX + SIDEBAR_WIDTH - 6 &&
+                mouseY >= yOffset - 2 && mouseY <= yOffset + 18) {
                 selectedCategory = cat;
                 modulePanel.setCategory(cat);
                 return;
             }
-            yOffset += 28;
+            yOffset += 24;
         }
 
+        int panelX = posX + SIDEBAR_WIDTH + 8;
         searchBar.mouseClicked(mouseX, mouseY, button);
-        modulePanel.mouseClicked(posX, posY + 50, mouseX, mouseY, button);
+        modulePanel.mouseClicked(panelX, posY + 38, mouseX, mouseY, button);
     }
 
     @Override
     public void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         if (dragging) {
             ScaledResolution sr = new ScaledResolution(mc);
-            posX = Math.max(SIDEBAR_WIDTH + GAP + 20,
-                    Math.min(sr.getScaledWidth() - PANEL_WIDTH + 10, mouseX - dragOffsetX));
-            posY = Math.max(0,
-                    Math.min(sr.getScaledHeight() - 100, mouseY - dragOffsetY));
+            posX = Math.max(0, Math.min(sr.getScaledWidth() - TOTAL_WIDTH, mouseX - dragOffsetX));
+            posY = Math.max(0, Math.min(sr.getScaledHeight() - 100,        mouseY - dragOffsetY));
         } else {
             modulePanel.mouseClickMove(mouseX);
         }
