@@ -1,13 +1,14 @@
 package myau.module.modules;
 
+import myau.module.BooleanSetting;
 import myau.module.Module;
-import myau.property.properties.BooleanProperty;
 
 public class AntiDebuff extends Module {
-    public final BooleanProperty blindness = new BooleanProperty("blindness", true);
-    public final BooleanProperty nausea = new BooleanProperty("nausea", true);
+    public final BooleanSetting blindness = new BooleanSetting("Blindness", true);
+    public final BooleanSetting nausea    = new BooleanSetting("Nausea", true);
 
     public AntiDebuff() {
         super("AntiDebuff", false);
+        register(blindness, nausea);
     }
 }
