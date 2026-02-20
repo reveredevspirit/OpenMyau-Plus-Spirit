@@ -24,7 +24,9 @@ public class AutoHypixel extends Module {
 
     public AutoHypixel() {
         super("AutoHypixel", false, false);
-        register(hypixelinv, policiesaccept, policiesacceptsilent);
+        register(hypixelinv);
+        register(policiesaccept);
+        register(policiesacceptsilent);
     }
 
     @EventTarget
