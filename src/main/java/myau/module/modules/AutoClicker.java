@@ -5,41 +5,53 @@ import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.LeftClickMouseEvent;
 import myau.events.TickEvent;
+import myau.module.BooleanSetting;
 import myau.module.Module;
+import myau.module.SliderSetting;
 import myau.util.*;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.IntProperty;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 import net.minecraft.world.WorldSettings.GameType;
 
-import java.util.Objects;
-
 public class AutoClicker extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private boolean clickPending = false;
-    private long clickDelay = 0L;
+    private boolean clickPending    = false;
+    private long    clickDelay      = 0L;
     private boolean blockHitPending = false;
-    private long blockHitDelay = 0L;
-    public final IntProperty minCPS = new IntProperty("min-cps", 8, 1, 20);
-    public final IntProperty maxCPS = new IntProperty("max-cps", 12, 1, 20);
-    public final BooleanProperty blockHit = new BooleanProperty("block-hit", false);
-    public final FloatProperty blockHitTicks = new FloatProperty("block-hit-ticks", 1.5F, 1.0F, 20.0F, this.blockHit::getValue);
-    public final BooleanProperty weaponsOnly = new BooleanProperty("weapons-only", true);
-    public final BooleanProperty allowTools = new BooleanProperty("allow-tools", false, this.weaponsOnly::getValue);
-    public final BooleanProperty breakBlocks = new BooleanProperty("break-blocks", true);
-    public final FloatProperty range = new FloatProperty("range", 3.0F, 3.0F, 8.0F, this.breakBlocks::getValue);
-    public final FloatProperty hitBoxVertical = new FloatProperty("hit-box-vertical", 0.1F, 0.0F, 1.0F, this.breakBlocks::getValue);
-    public final FloatProperty hitBoxHorizontal = new FloatProperty("hit-box-horizontal", 0.2F, 0.0F, 1.0F, this.breakBlocks::getValue);
+    private long    blockHitDelay   = 0L;
+
+    public final SliderSetting  minCPS           = new SliderSetting("Min CPS",        8,   1, 20,  1);
+    public final SliderSetting  maxCPS           = new SliderSetting("Max CPS",       12,   1, 20,  1);
+    public final BooleanSetting blockHit         = new BooleanSetting("Block Hit",     false);
+    public final SliderSetting  blockHitTicks    = new SliderSetting("BH Ticks",      1.5, 1.0, 20.0, 0.5);
+    public final BooleanSetting weaponsOnly      = new BooleanSetting("Weapons Only",  true);
+    public final BooleanSetting allowTools       = new BooleanSetting("Allow Tools",   false);
+    public final BooleanSetting breakBlocks      = new BooleanSetting("Break Blocks",  true);
+    public final SliderSetting  range            = new SliderSetting("Range",          3.0, 3.0, 8.0, 0.1);
+    public final SliderSetting  hitBoxVertical   = new SliderSetting("HB Vertical",   0.1, 0.0, 1.0, 0.05);
+    public final SliderSetting  hitBoxHorizontal = new SliderSetting("HB Horizontal", 0.2, 0.0, 1.0, 0.05);
+
+    public AutoClicker() {
+        super("AutoClicker", false);
+        register(minCPS);
+        register(maxCPS);
+        register(blockHit);
+        register(blockHitTicks);
+        register(weaponsOnly);
+        register(allowTools);
+        register(breakBlocks);
+        register(range);
+        register(hitBoxVertical);
+        register(hitBoxHorizontal);
+    }
 
     private long getNextClickDelay() {
-        return 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
+        return 1000L / RandomUtil.nextLong((long) minCPS.getValue(), (long) maxCPS.getValue());
     }
 
     private long getBlockHitDelay() {
-        return (long) (50.0F * this.blockHitTicks.getValue());
+        return (long)(50.0F * (float) blockHitTicks.getValue());
     }
 
     private boolean isBreakingBlock() {
@@ -47,90 +59,72 @@ public class AutoClicker extends Module {
     }
 
     private boolean canClick() {
-        if (!this.weaponsOnly.getValue()
-                || ItemUtil.hasRawUnbreakingEnchant()
-                || this.allowTools.getValue() && ItemUtil.isHoldingTool()) {
-            if (this.breakBlocks.getValue() && this.isBreakingBlock() && !this.hasValidTarget()) {
-                GameType gameType12 = mc.playerController.getCurrentGameType();
-                return gameType12 != GameType.SURVIVAL && gameType12 != GameType.CREATIVE;
-            } else {
-                return true;
+        if (!weaponsOnly.getValue() || ItemUtil.hasRawUnbreakingEnchant()
+                || allowTools.getValue() && ItemUtil.isHoldingTool()) {
+            if (breakBlocks.getValue() && isBreakingBlock() && !hasValidTarget()) {
+                GameType gt = mc.playerController.getCurrentGameType();
+                return gt != GameType.SURVIVAL && gt != GameType.CREATIVE;
             }
-        } else {
-            return false;
+            return true;
         }
+        return false;
     }
 
-    private boolean isValidTarget(EntityPlayer entityPlayer) {
-        if (entityPlayer != mc.thePlayer && entityPlayer != mc.thePlayer.ridingEntity) {
-            if (entityPlayer == mc.getRenderViewEntity() || entityPlayer == mc.getRenderViewEntity().ridingEntity) {
-                return false;
-            } else if (entityPlayer.deathTime > 0) {
-                return false;
-            } else {
-                float borderSize = entityPlayer.getCollisionBorderSize();
-                return RotationUtil.rayTrace(entityPlayer.getEntityBoundingBox().expand(
-                        borderSize + this.hitBoxHorizontal.getValue(),
-                        borderSize + this.hitBoxVertical.getValue(),
-                        borderSize + this.hitBoxHorizontal.getValue()
-                ), mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, this.range.getValue()) != null;
-            }
-        } else {
-            return false;
-        }
+    private boolean isValidTarget(EntityPlayer p) {
+        if (p == mc.thePlayer || p == mc.thePlayer.ridingEntity) return false;
+        if (p == mc.getRenderViewEntity() || p == mc.getRenderViewEntity().ridingEntity) return false;
+        if (p.deathTime > 0) return false;
+        float border = p.getCollisionBorderSize();
+        return RotationUtil.rayTrace(
+                p.getEntityBoundingBox().expand(
+                        border + (float) hitBoxHorizontal.getValue(),
+                        border + (float) hitBoxVertical.getValue(),
+                        border + (float) hitBoxHorizontal.getValue()),
+                mc.thePlayer.rotationYaw,
+                mc.thePlayer.rotationPitch,
+                (float) range.getValue()) != null;
     }
 
     private boolean hasValidTarget() {
-        return mc.theWorld
-                .loadedEntityList
-                .stream()
+        return mc.theWorld.loadedEntityList.stream()
                 .filter(e -> e instanceof EntityPlayer)
                 .map(e -> (EntityPlayer) e)
                 .anyMatch(this::isValidTarget);
     }
 
-    public AutoClicker() {
-        super("AutoClicker", false);
-    }
-
     @EventTarget
     public void onTick(TickEvent event) {
         if (event.getType() == EventType.PRE) {
-            if (this.clickDelay > 0L) {
-                this.clickDelay -= 50L;
-            }
-            if (this.blockHitDelay > 0L) {
-                this.blockHitDelay -= 50L;
-            }
+            if (clickDelay > 0L)    clickDelay    -= 50L;
+            if (blockHitDelay > 0L) blockHitDelay -= 50L;
             if (mc.currentScreen != null) {
-                this.clickPending = false;
-                this.blockHitPending = false;
+                clickPending = false;
+                blockHitPending = false;
             } else {
-                if (this.clickPending) {
-                    this.clickPending = false;
+                if (clickPending) {
+                    clickPending = false;
                     KeyBindUtil.updateKeyState(mc.gameSettings.keyBindAttack.getKeyCode());
                 }
-                if (this.blockHitPending) {
-                    this.blockHitPending = false;
+                if (blockHitPending) {
+                    blockHitPending = false;
                     KeyBindUtil.updateKeyState(mc.gameSettings.keyBindUseItem.getKeyCode());
                 }
-                if (this.isEnabled() && this.canClick() && mc.gameSettings.keyBindAttack.isKeyDown()) {
+                if (isEnabled() && canClick() && mc.gameSettings.keyBindAttack.isKeyDown()) {
                     if (!mc.thePlayer.isUsingItem()) {
-                        while (this.clickDelay <= 0L) {
-                            this.clickPending = true;
-                            this.clickDelay = this.clickDelay + this.getNextClickDelay();
+                        while (clickDelay <= 0L) {
+                            clickPending = true;
+                            clickDelay  += getNextClickDelay();
                             KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
                             KeyBindUtil.pressKeyOnce(mc.gameSettings.keyBindAttack.getKeyCode());
                         }
                     }
-                    if (this.blockHit.getValue()
-                            && this.blockHitDelay <= 0L
+                    if (blockHit.getValue() && blockHitDelay <= 0L
                             && mc.gameSettings.keyBindUseItem.isKeyDown()
                             && ItemUtil.isHoldingSword()) {
-                        this.blockHitPending = true;
+                        blockHitPending = true;
                         KeyBindUtil.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
                         if (!mc.thePlayer.isUsingItem()) {
-                            this.blockHitDelay = this.blockHitDelay + this.getBlockHitDelay();
+                            blockHitDelay += getBlockHitDelay();
                             KeyBindUtil.pressKeyOnce(mc.gameSettings.keyBindUseItem.getKeyCode());
                         }
                     }
@@ -141,36 +135,21 @@ public class AutoClicker extends Module {
 
     @EventTarget(Priority.LOWEST)
     public void onCLick(LeftClickMouseEvent event) {
-        if (this.isEnabled() && !event.isCancelled()) {
-            if (!this.clickPending) {
-                this.clickDelay = this.clickDelay + this.getNextClickDelay();
-            }
-        }
+        if (isEnabled() && !event.isCancelled() && !clickPending)
+            clickDelay += getNextClickDelay();
     }
 
     @Override
     public void onEnabled() {
-        this.clickDelay = 0L;
-        this.blockHitDelay = 0L;
-    }
-
-    @Override
-    public void verifyValue(String mode) {
-        if (this.minCPS.getName().equals(mode)) {
-            if (this.minCPS.getValue() > this.maxCPS.getValue()) {
-                this.maxCPS.setValue(this.minCPS.getValue());
-            }
-        } else {
-            if (this.maxCPS.getName().equals(mode) && this.minCPS.getValue() > this.maxCPS.getValue()) {
-                this.minCPS.setValue(this.maxCPS.getValue());
-            }
-        }
+        clickDelay    = 0L;
+        blockHitDelay = 0L;
     }
 
     @Override
     public String[] getSuffix() {
-        return Objects.equals(this.minCPS.getValue(), this.maxCPS.getValue())
-                ? new String[]{this.minCPS.getValue().toString()}
-                : new String[]{String.format("%d-%d", this.minCPS.getValue(), this.maxCPS.getValue())};
+        long mn = (long) minCPS.getValue(), mx = (long) maxCPS.getValue();
+        return mn == mx
+                ? new String[]{String.valueOf(mn)}
+                : new String[]{String.format("%d-%d", mn, mx)};
     }
 }
