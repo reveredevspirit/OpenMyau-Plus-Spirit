@@ -9,6 +9,7 @@ public class AntiDebuff extends Module {
 
     public AntiDebuff() {
         super("AntiDebuff", false);
-        register(blindness, nausea);
+        register(blindness);
+        register(nausea);
     }
 }
