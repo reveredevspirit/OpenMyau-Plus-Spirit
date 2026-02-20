@@ -69,7 +69,6 @@ public class ModulePanel {
         int width  = ROW_WIDTH;
         int offsetY = y - scrollOffset;
 
-        // No scissor — just skip rows outside visible area
         int clipTop    = y;
         int clipBottom = y + visibleHeight;
 
@@ -150,10 +149,11 @@ public class ModulePanel {
                         int barY = offsetY + 17;
                         int barW = width - 24;
 
-                        RoundedUtils.drawRoundedRect(barX, barY, barW, 4, 2, 0xFF444444);
+                        // Draw using solid rects to avoid GL state issues
+                        drawSolidRect(barX, barY, barX + barW, barY + 4, 0xFF444444);
                         int fillW = Math.max(4, (int)(barW * slider.getPercent()));
-                        RoundedUtils.drawRoundedRect(barX, barY, fillW, 4, 2, 0xFF55AAFF);
-                        RoundedUtils.drawRoundedRect(barX + fillW - 4, barY - 3, 8, 10, 4, 0xFFFFFFFF);
+                        drawSolidRect(barX, barY, barX + fillW, barY + 4, 0xFF55AAFF);
+                        drawSolidRect(barX + fillW - 4, barY - 3, barX + fillW + 4, barY + 7, 0xFFFFFFFF);
 
                         if (draggingSlider == slider) {
                             sliderRenderX = barX;
@@ -190,8 +190,10 @@ public class ModulePanel {
                         float bAnim = bool.getValue() ? 1f : 0f;
                         int bToggleX = x + width - 30;
                         int bToggleY = offsetY + 4;
-                        RoundedUtils.drawRoundedRect(bToggleX, bToggleY, 18, 8, 4, blend(0xFF555555, 0xFF55AAFF, bAnim));
-                        RoundedUtils.drawRoundedRect(bToggleX + 2 + (int)(bAnim * 6), bToggleY + 1, 6, 6, 3, 0xFFFFFFFF);
+                        drawSolidRect(bToggleX, bToggleY, bToggleX + 18, bToggleY + 8,
+                                blend(0xFF555555, 0xFF55AAFF, bAnim));
+                        drawSolidRect(bToggleX + 2 + (int)(bAnim * 6), bToggleY + 1,
+                                bToggleX + 2 + (int)(bAnim * 6) + 6, bToggleY + 7, 0xFFFFFFFF);
 
                         offsetY += rowH + 1;
 
@@ -219,7 +221,7 @@ public class ModulePanel {
         }
 
         // ----------------------------------------------------------------
-        // SCROLL BUTTONS on the right side
+        // SCROLL BUTTONS
         // ----------------------------------------------------------------
         int totalH = getContentHeight();
         if (totalH > visibleHeight) {
@@ -242,11 +244,11 @@ public class ModulePanel {
             GL11.glColor4f(1f, 1f, 1f, 1f);
             mc.fontRendererObj.drawString("v", btnX + 3, downBtnY + 3, 0xFF55AAFF);
 
-            // Scrollbar track between buttons
-            int trackY  = y + SCROLL_BTN_SIZE + 2;
-            int trackH  = visibleHeight - SCROLL_BTN_SIZE * 2 - 4;
-            int thumbH  = Math.max(16, (int)((float) visibleHeight / totalH * trackH));
-            int thumbY  = trackY + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (trackH - thumbH));
+            // Scrollbar track
+            int trackY = y + SCROLL_BTN_SIZE + 2;
+            int trackH = visibleHeight - SCROLL_BTN_SIZE * 2 - 4;
+            int thumbH = Math.max(16, (int)((float) visibleHeight / totalH * trackH));
+            int thumbY = trackY + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (trackH - thumbH));
             drawSolidRect(btnX + 5, trackY, btnX + 8, trackY + trackH, 0xFF333333);
             drawSolidRect(btnX + 5, thumbY, btnX + 8, thumbY + thumbH, 0xFF55AAFF);
         }
@@ -264,14 +266,12 @@ public class ModulePanel {
         if (totalH > visibleHeight) {
             int btnX = x + width + 4;
 
-            // Up button
             if (mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
                 mouseY >= panelY && mouseY <= panelY + SCROLL_BTN_SIZE) {
                 scrollUp();
                 return;
             }
 
-            // Down button
             int downBtnY = panelY + visibleHeight - SCROLL_BTN_SIZE;
             if (mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
                 mouseY >= downBtnY && mouseY <= downBtnY + SCROLL_BTN_SIZE) {
