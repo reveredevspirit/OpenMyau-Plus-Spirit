@@ -66,10 +66,9 @@ public class ModulePanel {
     // RENDER
     // ----------------------------------------------------------------
     public void render(int x, int y, int mouseX, int mouseY, String search) {
-        int width  = ROW_WIDTH;
+        int width = ROW_WIDTH;
         int offsetY = y - scrollOffset;
-
-        int clipTop    = y;
+        int clipTop = y;
         int clipBottom = y + visibleHeight;
 
         for (Module module : category.getModules()) {
@@ -80,7 +79,6 @@ public class ModulePanel {
             int height = 16;
 
             boolean inView = !(offsetY + height + getSettingsHeight(module) < clipTop || offsetY > clipBottom);
-
             if (!inView) {
                 offsetY += height + 1;
                 if (expandedModule == module) offsetY += getSettingsHeight(module);
@@ -91,20 +89,23 @@ public class ModulePanel {
                     mouseX >= x && mouseX <= x + width &&
                     mouseY >= offsetY && mouseY <= offsetY + height;
 
+            // Module row background
             int rowColor;
             if (module.isEnabled())  rowColor = 0xFF0D2137;
             else if (hovered)        rowColor = 0xFF2A2A2A;
             else                     rowColor = 0xFF1A1A1A;
-            RoundedUtils.drawRoundedRect(x, offsetY, width, height, 4, rowColor);
+            drawRect(x, offsetY, x + width, offsetY + height, rowColor);
 
             if (module.isEnabled()) {
-                drawSolidRect(x, offsetY, x + 3, offsetY + height, 0xFF55AAFF);
+                drawRect(x, offsetY, x + 3, offsetY + height, 0xFF55AAFF);
             }
 
+            // Module name
+            resetGL();
             int nameColor = module.isEnabled() ? 0xFF55AAFF : (hovered ? 0xFFCCCCCC : 0xFFFFFFFF);
-            GL11.glColor4f(1f, 1f, 1f, 1f);
             mc.fontRendererObj.drawString(module.getName(), x + 7, offsetY + 5, nameColor);
 
+            // Toggle switch
             boolean enabled = module.isEnabled();
             toggleAnim.putIfAbsent(module, enabled ? 1f : 0f);
             float anim = toggleAnim.get(module);
@@ -113,12 +114,12 @@ public class ModulePanel {
 
             int toggleX = x + width - 26;
             int toggleY = offsetY + 4;
-            RoundedUtils.drawRoundedRect(toggleX, toggleY, 20, 8, 4, blend(0xFF555555, 0xFF55AAFF, anim));
-            RoundedUtils.drawRoundedRect(toggleX + 2 + (int)(anim * 8), toggleY + 1, 6, 6, 3, 0xFFFFFFFF);
+            drawRect(toggleX, toggleY, toggleX + 20, toggleY + 8, blend(0xFF555555, 0xFF55AAFF, anim));
+            drawRect(toggleX + 2 + (int)(anim * 8), toggleY + 1, toggleX + 2 + (int)(anim * 8) + 6, toggleY + 7, 0xFFFFFFFF);
 
             if (!module.getSettings().isEmpty()) {
                 String arrow = expandedModule == module ? "v" : ">";
-                GL11.glColor4f(1f, 1f, 1f, 1f);
+                resetGL();
                 mc.fontRendererObj.drawString(arrow, x + width - 38, offsetY + 5, 0xFF888888);
             }
 
@@ -134,26 +135,29 @@ public class ModulePanel {
                         SliderSetting slider = (SliderSetting) setting;
                         int rowH = 28;
 
-                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+                        // Row bg
+                        drawRect(x + 6, offsetY, x + width, offsetY + rowH, 0xFF202020);
 
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        // Name
+                        resetGL();
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
+                        // Value
                         String valStr = formatDouble(slider.getValue());
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(valStr,
                                 x + width - mc.fontRendererObj.getStringWidth(valStr) - 8,
                                 offsetY + 4, 0xFF55AAFF);
 
+                        // Bar
                         int barX = x + 10;
                         int barY = offsetY + 17;
                         int barW = width - 24;
-
-                        // Draw using solid rects to avoid GL state issues
-                        drawSolidRect(barX, barY, barX + barW, barY + 4, 0xFF444444);
                         int fillW = Math.max(4, (int)(barW * slider.getPercent()));
-                        drawSolidRect(barX, barY, barX + fillW, barY + 4, 0xFF55AAFF);
-                        drawSolidRect(barX + fillW - 4, barY - 3, barX + fillW + 4, barY + 7, 0xFFFFFFFF);
+
+                        drawRect(barX, barY, barX + barW, barY + 4, 0xFF444444);
+                        drawRect(barX, barY, barX + fillW, barY + 4, 0xFF55AAFF);
+                        drawRect(barX + fillW - 4, barY - 3, barX + fillW + 4, barY + 7, 0xFFFFFFFF);
 
                         if (draggingSlider == slider) {
                             sliderRenderX = barX;
@@ -166,14 +170,14 @@ public class ModulePanel {
                         DropdownSetting dropdown = (DropdownSetting) setting;
                         int rowH = 16;
 
-                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+                        drawRect(x + 6, offsetY, x + width, offsetY + rowH, 0xFF202020);
 
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
                         String val = "< " + dropdown.getValue() + " >";
                         int valW = mc.fontRendererObj.getStringWidth(val);
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(val, x + width - valW - 8, offsetY + 4, 0xFF55AAFF);
 
                         offsetY += rowH + 1;
@@ -182,18 +186,19 @@ public class ModulePanel {
                         BooleanSetting bool = (BooleanSetting) setting;
                         int rowH = 16;
 
-                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+                        drawRect(x + 6, offsetY, x + width, offsetY + rowH, 0xFF202020);
 
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
+                        // Toggle
                         float bAnim = bool.getValue() ? 1f : 0f;
-                        int bToggleX = x + width - 30;
+                        int bToggleX = x + width - 28;
                         int bToggleY = offsetY + 4;
-                        drawSolidRect(bToggleX, bToggleY, bToggleX + 18, bToggleY + 8,
+                        drawRect(bToggleX, bToggleY, bToggleX + 18, bToggleY + 8,
                                 blend(0xFF555555, 0xFF55AAFF, bAnim));
-                        drawSolidRect(bToggleX + 2 + (int)(bAnim * 6), bToggleY + 1,
-                                bToggleX + 2 + (int)(bAnim * 6) + 6, bToggleY + 7, 0xFFFFFFFF);
+                        drawRect(bToggleX + 2 + (int)(bAnim * 6), bToggleY + 1,
+                                bToggleX + 8 + (int)(bAnim * 6), bToggleY + 7, 0xFFFFFFFF);
 
                         offsetY += rowH + 1;
 
@@ -201,16 +206,16 @@ public class ModulePanel {
                         KeybindSetting kb = (KeybindSetting) setting;
                         int rowH = 16;
 
-                        RoundedUtils.drawRoundedRect(x + 6, offsetY, width - 6, rowH, 3, 0xFF202020);
+                        drawRect(x + 6, offsetY, x + width, offsetY + rowH, 0xFF202020);
 
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(setting.getName(), x + 10, offsetY + 4, 0xFF999999);
 
                         boolean isListening = listeningKeybind == kb;
                         String keyLabel = isListening ? "[ ... ]" : "[ " + kb.getDisplayName() + " ]";
                         int keyColor = isListening ? 0xFFFFAA00 : 0xFF55AAFF;
                         int labelW = mc.fontRendererObj.getStringWidth(keyLabel);
-                        GL11.glColor4f(1f, 1f, 1f, 1f);
+                        resetGL();
                         mc.fontRendererObj.drawString(keyLabel, x + width - labelW - 8, offsetY + 4, keyColor);
 
                         offsetY += rowH + 1;
@@ -227,30 +232,27 @@ public class ModulePanel {
         if (totalH > visibleHeight) {
             int btnX = x + width + 4;
 
-            // Up button
             boolean upHovered = mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
                                 mouseY >= y && mouseY <= y + SCROLL_BTN_SIZE;
-            RoundedUtils.drawRoundedRect(btnX, y, SCROLL_BTN_SIZE, SCROLL_BTN_SIZE, 3,
+            drawRect(btnX, y, btnX + SCROLL_BTN_SIZE, y + SCROLL_BTN_SIZE,
                     upHovered ? 0xFF333333 : 0xFF222222);
-            GL11.glColor4f(1f, 1f, 1f, 1f);
+            resetGL();
             mc.fontRendererObj.drawString("^", btnX + 3, y + 3, 0xFF55AAFF);
 
-            // Down button
             int downBtnY = y + visibleHeight - SCROLL_BTN_SIZE;
             boolean downHovered = mouseX >= btnX && mouseX <= btnX + SCROLL_BTN_SIZE &&
                                   mouseY >= downBtnY && mouseY <= downBtnY + SCROLL_BTN_SIZE;
-            RoundedUtils.drawRoundedRect(btnX, downBtnY, SCROLL_BTN_SIZE, SCROLL_BTN_SIZE, 3,
+            drawRect(btnX, downBtnY, btnX + SCROLL_BTN_SIZE, downBtnY + SCROLL_BTN_SIZE,
                     downHovered ? 0xFF333333 : 0xFF222222);
-            GL11.glColor4f(1f, 1f, 1f, 1f);
+            resetGL();
             mc.fontRendererObj.drawString("v", btnX + 3, downBtnY + 3, 0xFF55AAFF);
 
-            // Scrollbar track
             int trackY = y + SCROLL_BTN_SIZE + 2;
             int trackH = visibleHeight - SCROLL_BTN_SIZE * 2 - 4;
             int thumbH = Math.max(16, (int)((float) visibleHeight / totalH * trackH));
             int thumbY = trackY + (int)((float) scrollOffset / Math.max(1, totalH - visibleHeight) * (trackH - thumbH));
-            drawSolidRect(btnX + 5, trackY, btnX + 8, trackY + trackH, 0xFF333333);
-            drawSolidRect(btnX + 5, thumbY, btnX + 8, thumbY + thumbH, 0xFF55AAFF);
+            drawRect(btnX + 5, trackY, btnX + 8, trackY + trackH, 0xFF333333);
+            drawRect(btnX + 5, thumbY, btnX + 8, thumbY + thumbH, 0xFF55AAFF);
         }
     }
 
@@ -261,7 +263,7 @@ public class ModulePanel {
         int x = panelX;
         int width = ROW_WIDTH;
 
-        // Scroll button clicks
+        // Scroll buttons
         int totalH = getContentHeight();
         if (totalH > visibleHeight) {
             int btnX = x + width + 4;
@@ -428,7 +430,8 @@ public class ModulePanel {
         return String.format("%.2f", v);
     }
 
-    private void drawSolidRect(int x1, int y1, int x2, int y2, int color) {
+    // Plain Minecraft-style drawRect — no GL state changes needed
+    private void drawRect(int x1, int y1, int x2, int y2, int color) {
         float a = (color >> 24 & 0xFF) / 255f;
         float r = (color >> 16 & 0xFF) / 255f;
         float g = (color >> 8  & 0xFF) / 255f;
@@ -438,11 +441,18 @@ public class ModulePanel {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glColor4f(r, g, b, a);
         GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex2f(x1, y1);
-        GL11.glVertex2f(x2, y1);
-        GL11.glVertex2f(x2, y2);
-        GL11.glVertex2f(x1, y2);
+        GL11.glVertex2d(x1, y2);
+        GL11.glVertex2d(x2, y2);
+        GL11.glVertex2d(x2, y1);
+        GL11.glVertex2d(x1, y1);
         GL11.glEnd();
+        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+    }
+
+    // Resets GL state before font rendering
+    private void resetGL() {
         GL11.glEnable(GL11.GL_TEXTURE_2D);
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glColor4f(1f, 1f, 1f, 1f);
