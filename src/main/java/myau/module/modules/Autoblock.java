@@ -23,9 +23,6 @@ import net.minecraft.util.EnumFacing;
 public class Autoblock extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    // ----------------------------------------------------------------
-    // SETTINGS (visible in GUI)
-    // ----------------------------------------------------------------
     public final DropdownSetting mode = register(new DropdownSetting("Mode", 10,
             "NONE", "VANILLA", "SPOOF", "HYPIXEL", "BLINK",
             "INTERACT", "SWAP", "LEGIT", "FAKE", "LAGRANGE",
@@ -42,18 +39,16 @@ public class Autoblock extends Module {
     public final BooleanSetting autoRelease   = register(new BooleanSetting("Auto Release",   true));
 
     // SLINKY settings
-    public final SliderSetting  slinkyMaxHold      = register(new SliderSetting("Slinky Max Hold",     4.0,   1.0,  10.0,  0.5));
-    public final SliderSetting  slinkyMaxHurt      = register(new SliderSetting("Slinky Max Hurt",     8.0,   1.0,  10.0,  0.5));
-    public final SliderSetting  slinkyLagChance    = register(new SliderSetting("Slinky Lag Chance",  35.0,   0.0, 100.0,  1.0));
-    public final SliderSetting  slinkyLagDuration  = register(new SliderSetting("Slinky Lag Duration",150.0,  0.0, 500.0, 10.0));
+    public final SliderSetting  slinkyMaxHold        = register(new SliderSetting("Slinky Max Hold",      4.0,   1.0,  10.0,  0.5));
+    public final SliderSetting  slinkyMaxHurt        = register(new SliderSetting("Slinky Max Hurt",      8.0,   1.0,  10.0,  0.5));
+    public final SliderSetting  slinkyLagChance      = register(new SliderSetting("Slinky Lag Chance",   35.0,   0.0, 100.0,  1.0));
+    public final SliderSetting  slinkyLagDuration    = register(new SliderSetting("Slinky Lag Duration", 150.0,  0.0, 500.0, 10.0));
     public final BooleanSetting slinkyReblockInstant = register(new BooleanSetting("Slinky Reblock Instant", true));
-    public final BooleanSetting slinkyRightClick   = register(new BooleanSetting("Slinky Right Click", true));
-    public final BooleanSetting slinkyLeftClick    = register(new BooleanSetting("Slinky Left Click",  false));
-    public final BooleanSetting slinkyDamaged      = register(new BooleanSetting("Slinky Damaged",     true));
+    public final BooleanSetting slinkyRightClick     = register(new BooleanSetting("Slinky Right Click",  true));
+    public final BooleanSetting slinkyLeftClick      = register(new BooleanSetting("Slinky Left Click",   false));
+    public final BooleanSetting slinkyDamaged        = register(new BooleanSetting("Slinky Damaged",      true));
 
-    // ----------------------------------------------------------------
-    // INTERNAL STATE
-    // ----------------------------------------------------------------
+    // Internal state
     private boolean blockingState  = false;
     private boolean fakeBlockState = false;
     private boolean isBlocking     = false;
@@ -61,26 +56,19 @@ public class Autoblock extends Module {
     private int     blockTick      = 0;
     private long    blockDelayMS   = 0L;
     private int     releaseTick    = 0;
-    private int     lastAttackTick = 0;
 
     public Autoblock() {
         super("Autoblock", false);
     }
 
-    // ----------------------------------------------------------------
-    // HELPERS
-    // ----------------------------------------------------------------
-    private int   getMode()           { return mode.getIndex(); }
-    private float getBlockRange()     { return (float) blockRange.getValue(); }
-    private float getMinCPS()         { return (float) minCPS.getValue(); }
-    private float getMaxCPS()         { return (float) maxCPS.getValue(); }
-    private float getReleaseDelay()   { return (float) releaseDelay.getValue(); }
+    private int   getMode()         { return mode.getIndex(); }
+    private float getBlockRange()   { return (float) blockRange.getValue(); }
+    private float getMinCPS()       { return (float) minCPS.getValue(); }
+    private float getMaxCPS()       { return (float) maxCPS.getValue(); }
+    private float getReleaseDelay() { return (float) releaseDelay.getValue(); }
 
     private long getBlockDelay() {
-        return (long)(1000.0F / RandomUtil.nextLong(
-                (long) getMinCPS(),
-                (long) getMaxCPS()
-        ));
+        return (long)(1000.0F / RandomUtil.nextLong((long) getMinCPS(), (long) getMaxCPS()));
     }
 
     private boolean canAutoblock() {
@@ -99,7 +87,7 @@ public class Autoblock extends Module {
         );
     }
 
-    private void startBlock(ItemStack stack) {
+    public void startBlock(ItemStack stack) {
         if (stack == null) return;
         PacketUtil.sendPacket(new C08PacketPlayerBlockPlacement(stack));
         mc.thePlayer.setItemInUse(stack, stack.getMaxItemUseDuration());
@@ -107,7 +95,7 @@ public class Autoblock extends Module {
         this.releaseTick = (int) getReleaseDelay();
     }
 
-    private void stopBlock() {
+    public void stopBlock() {
         PacketUtil.sendPacket(new C07PacketPlayerDigging(
                 C07PacketPlayerDigging.Action.RELEASE_USE_ITEM,
                 BlockPos.ORIGIN,
@@ -130,19 +118,12 @@ public class Autoblock extends Module {
         return Math.floorMod(currentSlot - 1, 9);
     }
 
-    // ----------------------------------------------------------------
-    // MAIN UPDATE
-    // ----------------------------------------------------------------
     @EventTarget(Priority.LOW)
     public void onUpdate(UpdateEvent event) {
         if (!this.isEnabled()) {
             resetState();
             return;
         }
-
-        KillAura ka = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
-        if (ka.isAttackAllowed()) this.lastAttackTick = 0;
-        else this.lastAttackTick++;
 
         if (event.getType() == EventType.POST && this.blinkReset) {
             this.blinkReset = false;
@@ -185,71 +166,61 @@ public class Autoblock extends Module {
                 break;
 
             case 2: // SPOOF
-                if (this.lastAttackTick <= 2) {
-                    int item = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
-                    int slot = this.findEmptySlot(item);
-                    PacketUtil.sendPacket(new C09PacketHeldItemChange(slot));
-                    PacketUtil.sendPacket(new C09PacketHeldItemChange(item));
-                    swap = true;
-                }
+                int item2 = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
+                int slot2 = this.findEmptySlot(item2);
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(slot2));
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(item2));
+                swap = true;
                 this.isBlocking    = true;
                 this.fakeBlockState = false;
                 break;
 
             case 3: // HYPIXEL
-                if (this.lastAttackTick > 3) {
-                    switch (this.blockTick) {
-                        case 0: swap = true; this.blockTick = 1; break;
-                        case 1: if (this.blockDelayMS <= 50L) this.blockTick = 0; break;
-                    }
+                switch (this.blockTick) {
+                    case 0: swap = true; this.blockTick = 1; break;
+                    case 1: if (this.blockDelayMS <= 50L) this.blockTick = 0; break;
                 }
                 this.isBlocking    = true;
                 this.fakeBlockState = true;
                 break;
 
             case 4: // BLINK
-                if (this.lastAttackTick > 2) {
-                    switch (this.blockTick) {
-                        case 0:
-                            swap = true;
-                            this.blinkReset = true;
-                            this.blockTick  = 1;
-                            break;
-                        case 1:
-                            if (this.blockDelayMS <= 50L) this.blockTick = 0;
-                            break;
-                    }
+                switch (this.blockTick) {
+                    case 0:
+                        swap = true;
+                        this.blinkReset = true;
+                        this.blockTick  = 1;
+                        break;
+                    case 1:
+                        if (this.blockDelayMS <= 50L) this.blockTick = 0;
+                        break;
                 }
                 this.isBlocking    = true;
                 this.fakeBlockState = true;
                 break;
 
             case 5: // INTERACT
-                if (this.lastAttackTick <= 3) {
-                    int current = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
-                    int empty   = this.findEmptySlot(current);
-                    PacketUtil.sendPacket(new C09PacketHeldItemChange(empty));
-                    ((IAccessorPlayerControllerMP) mc.playerController).setCurrentPlayerItem(empty);
-                    swap = true;
-                }
+                int current5 = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
+                int empty5   = this.findEmptySlot(current5);
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(empty5));
+                ((IAccessorPlayerControllerMP) mc.playerController).setCurrentPlayerItem(empty5);
+                swap = true;
                 this.isBlocking    = true;
                 this.fakeBlockState = true;
                 break;
 
             case 6: // SWAP
-                if (this.lastAttackTick <= 2) {
-                    int cur       = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
-                    int emptySlot = this.findEmptySlot(cur);
-                    PacketUtil.sendPacket(new C09PacketHeldItemChange(emptySlot));
-                    PacketUtil.sendPacket(new C09PacketHeldItemChange(cur));
-                    swap = true;
-                }
+                int cur6       = ((IAccessorPlayerControllerMP) mc.playerController).getCurrentPlayerItem();
+                int emptySlot6 = this.findEmptySlot(cur6);
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(emptySlot6));
+                PacketUtil.sendPacket(new C09PacketHeldItemChange(cur6));
+                swap = true;
                 this.isBlocking    = true;
                 this.fakeBlockState = true;
                 break;
 
             case 7: // LEGIT
-                if (this.lastAttackTick <= 1) swap = true;
+                swap = true;
                 this.isBlocking    = true;
                 this.fakeBlockState = false;
                 break;
@@ -262,38 +233,36 @@ public class Autoblock extends Module {
             case 9: // LAGRANGE
                 int ping      = PingUtil.getPing();
                 int lagWindow = Math.min(100, Math.max(30, ping));
-                if (this.lastAttackTick <= 4) {
-                    switch (this.blockTick) {
-                        case 0:
-                            swap = true;
-                            this.blockDelayMS = lagWindow;
-                            this.blockTick    = 1;
-                            break;
-                        case 1:
-                            if (this.blockDelayMS <= 0L) this.blockTick = 2;
-                            break;
-                        case 2:
-                            if (ka.isAttackAllowed()) this.blockTick = 0;
-                            break;
-                    }
+                switch (this.blockTick) {
+                    case 0:
+                        swap = true;
+                        this.blockDelayMS = lagWindow;
+                        this.blockTick    = 1;
+                        break;
+                    case 1:
+                        if (this.blockDelayMS <= 0L) this.blockTick = 2;
+                        break;
+                    case 2:
+                        KillAura ka9 = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
+                        if (ka9.isAttackAllowed()) this.blockTick = 0;
+                        break;
                 }
                 this.isBlocking    = true;
                 this.fakeBlockState = true;
                 break;
 
             case 10: // GRIM
-                if (this.lastAttackTick <= 1 && !this.blockingState) swap = true;
+                if (!this.blockingState) swap = true;
                 this.isBlocking    = true;
                 this.fakeBlockState = false;
                 break;
 
             case 11: // SLINKY
                 boolean allow = false;
-
-                if (slinkyRightClick.getValue() && PlayerUtil.isUsingItem())                allow = true;
-                if (slinkyLeftClick.getValue()  && mc.gameSettings.keyBindAttack.isKeyDown()) allow = true;
-                if (slinkyDamaged.getValue()    && mc.thePlayer.hurtTime > 0)               allow = true;
-                if (mc.thePlayer.hurtTime > (float) slinkyMaxHurt.getValue())               allow = false;
+                if (slinkyRightClick.getValue() && PlayerUtil.isUsingItem())                    allow = true;
+                if (slinkyLeftClick.getValue()  && mc.gameSettings.keyBindAttack.isKeyDown())   allow = true;
+                if (slinkyDamaged.getValue()    && mc.thePlayer.hurtTime > 0)                   allow = true;
+                if (mc.thePlayer.hurtTime > (float) slinkyMaxHurt.getValue())                   allow = false;
 
                 if (!allow) {
                     if (this.blockingState) stopBlock();
@@ -312,7 +281,7 @@ public class Autoblock extends Module {
                     if (this.blockDelayMS <= 0L) swap = true;
                 }
 
-                this.releaseTick = (int) slinkyMaxHold.getValue();
+                this.releaseTick   = (int) slinkyMaxHold.getValue();
                 this.isBlocking    = true;
                 this.fakeBlockState = false;
                 break;
@@ -325,14 +294,13 @@ public class Autoblock extends Module {
     }
 
     private void resetState() {
-        stopBlock();
+        if (this.blockingState) stopBlock();
         Myau.blinkManager.setBlinkState(false, BlinkModules.AUTO_BLOCK);
         this.isBlocking    = false;
         this.fakeBlockState = false;
         this.blockTick     = 0;
         this.blockDelayMS  = 0L;
         this.releaseTick   = 0;
-        this.lastAttackTick = 0;
     }
 
     public boolean isBlocking() {
