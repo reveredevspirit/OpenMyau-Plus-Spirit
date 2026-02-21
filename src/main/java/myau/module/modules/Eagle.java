@@ -1,83 +1,94 @@
 package myau.module.modules;
 
 import myau.event.EventTarget;
+import myau.event.types.EventType;
 import myau.event.types.Priority;
 import myau.events.MoveInputEvent;
+import myau.events.TickEvent;
 import myau.module.BooleanSetting;
 import myau.module.Module;
 import myau.module.SliderSetting;
 import myau.util.ItemUtil;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockAir;
+import myau.util.MoveUtil;
+import myau.util.PlayerUtil;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.BlockPos;
+import org.apache.commons.lang3.RandomUtils;
+import org.lwjgl.input.Keyboard;
+
+import java.util.Objects;
 
 public class Eagle extends Module {
-
     private static final Minecraft mc = Minecraft.getMinecraft();
+    private int sneakDelay = 0;
 
-    public final SliderSetting  edgeOffset  = new SliderSetting("Edge Offset", 0.1, 0.0, 1.0, 0.05);
-    public final BooleanSetting blocksOnly  = new BooleanSetting("Blocks Only", true);
-    public final BooleanSetting pitchBypass = new BooleanSetting("Pitch Bypass", true);
+    public final SliderSetting  minDelay       = new SliderSetting("Min Delay",       2,  0, 10, 1);
+    public final SliderSetting  maxDelay       = new SliderSetting("Max Delay",       3,  0, 10, 1);
+    public final BooleanSetting directionCheck = new BooleanSetting("Direction Check", true);
+    public final BooleanSetting pitchCheck     = new BooleanSetting("Pitch Check",    true);
+    public final BooleanSetting blocksOnly     = new BooleanSetting("Blocks Only",    true);
+    public final BooleanSetting sneakOnly      = new BooleanSetting("Sneak Only",     false);
 
     public Eagle() {
         super("Eagle", false);
-        register(edgeOffset);
+        register(minDelay);
+        register(maxDelay);
+        register(directionCheck);
+        register(pitchCheck);
         register(blocksOnly);
-        register(pitchBypass);
+        register(sneakOnly);
     }
 
-    private boolean isNearEdge() {
-        if (!mc.thePlayer.onGround)                              return false;
-        if (blocksOnly.getValue() && !ItemUtil.isHoldingBlock()) return false;
-        if (pitchBypass.getValue() && mc.thePlayer.rotationPitch > 60.0f) return false;
-
-        float  offset = (float) edgeOffset.getValue();
-        double px     = mc.thePlayer.posX;
-        double py     = mc.thePlayer.posY;
-        double pz     = mc.thePlayer.posZ;
-
-        // Predict next position based on movement input
-        double mx  = mc.thePlayer.motionX;
-        double mz  = mc.thePlayer.motionZ;
-        float  fwd = mc.thePlayer.movementInput.moveForward;
-        float  str = mc.thePlayer.movementInput.moveStrafe;
-        double yaw = Math.toRadians(mc.thePlayer.rotationYaw);
-        mx += (-Math.sin(yaw) * fwd + Math.cos(yaw) * str) * 0.02;
-        mz += ( Math.cos(yaw) * fwd + Math.sin(yaw) * str) * 0.02;
-
-        double simX   = px + mx;
-        double simZ   = pz + mz;
-        int    floorY = (int) Math.floor(py) - 1;
-
-        double w = 0.3 + offset;
-        return cornerIsAir(simX + w, floorY, simZ + w)
-            || cornerIsAir(simX + w, floorY, simZ - w)
-            || cornerIsAir(simX - w, floorY, simZ + w)
-            || cornerIsAir(simX - w, floorY, simZ - w);
+    private boolean canMoveSafely() {
+        double[] offset = MoveUtil.predictMovement();
+        return PlayerUtil.canMove(mc.thePlayer.motionX + offset[0], mc.thePlayer.motionZ + offset[1]);
     }
 
-    private boolean cornerIsAir(double x, int y, double z) {
-        try {
-            BlockPos pos   = new BlockPos((int) Math.floor(x), y, (int) Math.floor(z));
-            Block    block = mc.theWorld.getChunkFromBlockCoords(pos).getBlock(pos);
-            return block == null || block instanceof BlockAir;
-        } catch (Exception e) {
-            return false;
+    private boolean shouldSneak() {
+        if (directionCheck.getValue() && mc.gameSettings.keyBindForward.isKeyDown()) return false;
+        if (pitchCheck.getValue() && mc.thePlayer.rotationPitch < 69.0F) return false;
+        if (sneakOnly.getValue() && !Keyboard.isKeyDown(mc.gameSettings.keyBindSneak.getKeyCode())) return false;
+        return (!blocksOnly.getValue() || ItemUtil.isHoldingBlock()) && mc.thePlayer.onGround;
+    }
+
+    @EventTarget(Priority.LOWEST)
+    public void onTick(TickEvent event) {
+        if (!isEnabled() || event.getType() != EventType.PRE) return;
+        if (sneakDelay > 0) sneakDelay--;
+        if (sneakDelay == 0 && canMoveSafely()) {
+            int min = (int) minDelay.getValue();
+            int max = (int) maxDelay.getValue();
+            sneakDelay = RandomUtils.nextInt(Math.min(min, max), Math.max(min, max) + 1);
         }
     }
 
     @EventTarget(Priority.LOWEST)
     public void onMoveInput(MoveInputEvent event) {
         if (!isEnabled() || mc.currentScreen != null) return;
-        // Continuously hold sneak while near an edge — same pattern as Scaffold's safe-walk
-        if (isNearEdge()) {
-            mc.thePlayer.movementInput.sneak = true;
+
+        if (sneakOnly.getValue() && Keyboard.isKeyDown(mc.gameSettings.keyBindSneak.getKeyCode()) && shouldSneak()) {
+            mc.thePlayer.movementInput.sneak = false;
+            mc.thePlayer.movementInput.moveForward /= 0.3F;
+            mc.thePlayer.movementInput.moveStrafe  /= 0.3F;
+        }
+
+        if (!mc.thePlayer.movementInput.sneak) {
+            if (shouldSneak() && (sneakDelay > 0 || canMoveSafely())) {
+                mc.thePlayer.movementInput.sneak = true;
+                mc.thePlayer.movementInput.moveStrafe  *= 0.3F;
+                mc.thePlayer.movementInput.moveForward *= 0.3F;
+            }
         }
     }
 
     @Override
+    public void onDisabled() { sneakDelay = 0; }
+
+    @Override
     public String[] getSuffix() {
-        return new String[]{ String.format("%.2fb", edgeOffset.getValue()) };
+        int min = (int) minDelay.getValue();
+        int max = (int) maxDelay.getValue();
+        return min == max
+                ? new String[]{ String.valueOf(min) }
+                : new String[]{ String.format("%d-%d", min, max) };
     }
 }

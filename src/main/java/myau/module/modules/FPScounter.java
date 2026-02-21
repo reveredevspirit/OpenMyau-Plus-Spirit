@@ -1,97 +1,92 @@
-/*
- * Decompiled with CFR 0.152.
- *
- * Could not load the following classes:
- *  net.minecraft.client.Minecraft
- *  net.minecraft.client.gui.ScaledResolution
- *  net.minecraft.client.renderer.GlStateManager
- */
 package myau.module.modules;
 
-import java.awt.Color;
 import myau.event.EventTarget;
 import myau.events.Render2DEvent;
+import myau.module.BooleanSetting;
+import myau.module.DropdownSetting;
 import myau.module.Module;
-import myau.property.properties.BooleanProperty;
-import myau.property.properties.ColorProperty;
-import myau.property.properties.FloatProperty;
-import myau.property.properties.IntProperty;
-import myau.property.properties.ModeProperty;
+import myau.module.SliderSetting;
 import myau.util.render.BlurShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 
-public class FPScounter
-        extends Module {
+import java.awt.*;
+
+public class FPScounter extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    public final BooleanProperty enabled = new BooleanProperty("Enabled", true);
-    public final ModeProperty posX = new ModeProperty("Position-X", 1, new String[]{"Left", "Center", "Right"});
-    public final ModeProperty posY = new ModeProperty("Position-Y", 1, new String[]{"Top", "Center", "Bottom"});
-    public final IntProperty offsetX = new IntProperty("X-Offset", 0, -200, 200);
-    public final IntProperty offsetY = new IntProperty("Y-Offset", 0, -200, 200);
-    public final FloatProperty scale = new FloatProperty("Scale", 1.0f, 0.6f, 2.0f);
-    public final IntProperty blurStrength = new IntProperty("Blur Strength", 6, 1, 10);
-    public final IntProperty cornerRadius = new IntProperty("Corner Radius", 8, 5, 20);
-    public final IntProperty backgroundAlpha = new IntProperty("Background Alpha", 160, 0, 255);
-    public final ColorProperty textColor = new ColorProperty("Text Color", Color.WHITE.getRGB());
+
+    public final BooleanSetting  enabled         = new BooleanSetting("Enabled",          true);
+    public final DropdownSetting posX            = new DropdownSetting("Position X",       1, "Left", "Center", "Right");
+    public final DropdownSetting posY            = new DropdownSetting("Position Y",       1, "Top", "Center", "Bottom");
+    public final SliderSetting   offsetX         = new SliderSetting("X Offset",           0, -200, 200, 1);
+    public final SliderSetting   offsetY         = new SliderSetting("Y Offset",           0, -200, 200, 1);
+    public final SliderSetting   scale           = new SliderSetting("Scale",            1.0,  0.6,  2.0, 0.05);
+    public final SliderSetting   blurStrength    = new SliderSetting("Blur Strength",      6,    1,   10,    1);
+    public final SliderSetting   cornerRadius    = new SliderSetting("Corner Radius",      8,    5,   20,    1);
+    public final SliderSetting   backgroundAlpha = new SliderSetting("Background Alpha", 160,    0,  255,    1);
+    // ColorProperty has no new-system equivalent; use R/G/B sliders
+    public final SliderSetting   textColorR      = new SliderSetting("Text R",           255,    0,  255,    1);
+    public final SliderSetting   textColorG      = new SliderSetting("Text G",           255,    0,  255,    1);
+    public final SliderSetting   textColorB      = new SliderSetting("Text B",           255,    0,  255,    1);
 
     public FPScounter() {
         super("Fpscounter", false, false);
+        register(enabled);
+        register(posX);
+        register(posY);
+        register(offsetX);
+        register(offsetY);
+        register(scale);
+        register(blurStrength);
+        register(cornerRadius);
+        register(backgroundAlpha);
+        register(textColorR);
+        register(textColorG);
+        register(textColorB);
     }
 
     @EventTarget
     public void onRender2DEvent(Render2DEvent event) {
-        if (!((Boolean)this.enabled.getValue()).booleanValue() || !this.isEnabled()) {
-            return;
-        }
+        if (!enabled.getValue() || !isEnabled()) return;
+
         ScaledResolution sr = new ScaledResolution(mc);
-        float scaleFactor = ((Float)this.scale.getValue()).floatValue();
-        float baseX = 0.0f;
-        float baseY = 0.0f;
-        switch ((int) this.posX.getValue()) {
-            case 0: {
-                baseX = 10.0f;
-                break;
-            }
-            case 1: {
-                baseX = (float) sr.getScaledWidth() / 2.0f;
-                break;
-            }
-            case 2: {
-                baseX = sr.getScaledWidth() - 10;
-            }
+        float scaleFactor = (float) scale.getValue();
+        float baseX = 0.0f, baseY = 0.0f;
+
+        switch (posX.getIndex()) {
+            case 0: baseX = 10.0f; break;
+            case 1: baseX = sr.getScaledWidth() / 2.0f; break;
+            case 2: baseX = sr.getScaledWidth() - 10; break;
         }
-        switch ((int) this.posY.getValue()) {
-            case 0: {
-                baseY = 10.0f;
-                break;
-            }
-            case 1: {
-                baseY = (float) sr.getScaledHeight() / 2.0f;
-                break;
-            }
-            case 2: {
-                baseY = sr.getScaledHeight() - 10;
-            }
+        switch (posY.getIndex()) {
+            case 0: baseY = 10.0f; break;
+            case 1: baseY = sr.getScaledHeight() / 2.0f; break;
+            case 2: baseY = sr.getScaledHeight() - 10; break;
         }
-        baseX += (int) this.offsetX.getValue();
-        baseY += (int) this.offsetY.getValue();
+        baseX += (int) offsetX.getValue();
+        baseY += (int) offsetY.getValue();
+
         int fps = Minecraft.getDebugFPS();
         String text = "FPS " + fps;
-        int textWidth = mc.fontRendererObj.getStringWidth(text);
+        int textWidth  = mc.fontRendererObj.getStringWidth(text);
         int textHeight = mc.fontRendererObj.FONT_HEIGHT;
         float w = textWidth + 12;
         float h = textHeight + 6;
-        float radius = ((Integer)this.cornerRadius.getValue()).intValue();
+
         GlStateManager.pushMatrix();
         GlStateManager.scale(scaleFactor, scaleFactor, 1.0f);
         float drawX = baseX / scaleFactor;
         float drawY = baseY / scaleFactor;
-        BlurShadowRenderer.renderFrostedGlass(drawX - w / 2.0f, drawY - h / 2.0f, w, h, radius, (Integer)this.blurStrength.getValue(), (Integer)this.backgroundAlpha.getValue());
-        int color = (Integer)this.textColor.getValue();
-        mc.fontRendererObj.drawString(text, (int)(drawX - (float)textWidth / 2.0f), (int)(drawY - (float)textHeight / 2.0f), color);
+
+        BlurShadowRenderer.renderFrostedGlass(
+                drawX - w / 2.0f, drawY - h / 2.0f, w, h,
+                (float)(int) cornerRadius.getValue(),
+                (int) blurStrength.getValue(),
+                (int) backgroundAlpha.getValue());
+
+        int color = new Color((int) textColorR.getValue(), (int) textColorG.getValue(), (int) textColorB.getValue()).getRGB();
+        mc.fontRendererObj.drawString(text, (int)(drawX - textWidth / 2.0f), (int)(drawY - textHeight / 2.0f), color);
         GlStateManager.popMatrix();
     }
 }
-
